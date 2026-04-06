@@ -1,0 +1,460 @@
+{
+  "dashboard": {
+    "title": "Clawscope",
+    "refresh": "Aktualisieren",
+    "logout": "Abmelden",
+    "nav": {
+      "overview": "Übersicht",
+      "promptHistory": "Prompt-Verlauf",
+      "liveAgents": "Live Agents",
+      "cronJobs": "Cron Jobs",
+      "cronHistory": "Cron-Verlauf",
+      "sessions": "Aktive Sessions",
+      "costs": "Token-Kosten",
+      "systemPrompt": "System-Prompt",
+      "promptPipeline": "Prompt-Pipeline",
+      "promptSimulator": "Prompt-Simulator",
+      "promptVisualizer": "Prompt Visualizer",
+      "settings": "Einstellungen",
+      "collectorStatus": "Collector Status"
+    }
+  },
+  "stats": {
+    "loadingStats": "Dashboard wird geladen...",
+    "noData": "Keine Daten verfügbar",
+    "lastUpdated": "Zuletzt aktualisiert:",
+    "cronJobs": "Cron Jobs",
+    "activeSessions": "Aktive Sessions",
+    "dailyCosts": "Tageskosten",
+    "monthlyCosts": "Monatskosten",
+    "systemHealth": "System-Gesundheit",
+    "systemHealthDesc": "Gesamtstatus und Überwachung des Systems",
+    "health": {
+      "good": "Gut",
+      "warning": "Warnung",
+      "critical": "Kritisch",
+      "unknown": "Unbekannt"
+    },
+    "overview": {
+      "description": "Überblick über die gesamte OpenClaw-Instanz: Cron Jobs, aktive Sessions, Token-Verbrauch und System-Gesundheit auf einen Blick."
+    },
+    "visualizerCta": "Sieh genau, wie OpenClaw jeden Prompt zusammenbaut — Schritt für Schritt, Token für Token."
+  },
+  "promptHistory": {
+    "title": "Prompt-Verlauf",
+    "description": "Jeder API-Call im Detail: Nutzernachrichten, Assistent-Antworten, Token-Verbrauch und Kosten pro Turn – chronologisch aus den Session-Logs.",
+    "views": {
+      "timeline": "Zeitleiste",
+      "sessions": "Sessions"
+    },
+    "filters": {
+      "today": "Heute",
+      "yesterday": "Gestern",
+      "7days": "7 Tage",
+      "30days": "30 Tage",
+      "custom": "Zeitraum…",
+      "allUsers": "Alle Nutzer",
+      "from": "Von",
+      "to": "Bis"
+    },
+    "stats": {
+      "sessions": "Sessions",
+      "turns": "Turns",
+      "apiCalls": "API-Calls",
+      "tokens": "Tokens",
+      "cost": "Kosten"
+    },
+    "noTurns": "Keine Turns im Zeitraum",
+    "noSessions": "Keine Sessions im Zeitraum",
+    "noApiCalls": "Keine API-Calls",
+    "session": "Session:",
+    "user": "Nutzer:",
+    "assistant": "Assistent:",
+    "input": "Eingabe",
+    "output": "Ausgabe",
+    "cacheRead": "Cache L",
+    "cacheWrite": "Cache S",
+    "preview": "Vorschau",
+    "noText": "(kein Text)"
+  },
+  "liveAgents": {
+    "title": "Live Agents",
+    "description": "Alle gespawnten Sub-Agents: Task-Beschreibung, Tool Calls, Laufzeit und Kosten. Aufklappen für den vollen Verlauf – was hat der Agent gemacht und was kam raus.",
+    "running": "aktiv",
+    "active": "Aktiv",
+    "noAgents": "Keine Agents im Zeitraum",
+    "task": "Aufgabe:",
+    "result": "Ergebnis:",
+    "toolCalls": "Tool-Calls",
+    "filters": {
+      "1h": "1 Std.",
+      "6h": "6 Std.",
+      "24h": "24 Std.",
+      "3days": "3 Tage",
+      "7days": "7 Tage",
+      "allStatus": "Alle Status",
+      "completed": "Abgeschlossen"
+    },
+    "stats": {
+      "agents": "Agents",
+      "active": "Aktiv",
+      "apiCalls": "API-Calls",
+      "toolCalls": "Tool-Calls",
+      "costs": "Kosten"
+    }
+  },
+  "cronJobs": {
+    "title": "Cron Jobs",
+    "description": "Alle konfigurierten Cron Jobs mit Zeitplänen, letztem Ausführungsstatus und Fehlerverlauf.",
+    "loading": "Cron Jobs werden geladen...",
+    "noCronJobs": "Keine Cron Jobs gefunden",
+    "errors": "Fehler",
+    "recentErrors": "Aktuelle Fehler",
+    "columns": {
+      "name": "Name",
+      "schedule": "Zeitplan",
+      "model": "Modell",
+      "status": "Status",
+      "errors": "Fehler",
+      "runs": "Läufe",
+      "tokensPerRun": "Tokens/Lauf",
+      "costPerRun": "$/Lauf",
+      "totalCost": "Gesamt $",
+      "nextRun": "Nächster Lauf"
+    }
+  },
+  "cronHistory": {
+    "title": "Cron-Verlauf",
+    "description": "Vollständige Ausführungshistorie aller Cron Jobs: Wann lief was, wie lange und ob es erfolgreich war oder Fehler gab.",
+    "loadingMore": "Lade weitere...",
+    "allLoaded": "Alle {{total}} Läufe geladen",
+    "runsOf": "{{loaded}} / {{total}} Läufe",
+    "columns": {
+      "time": "Zeit",
+      "status": "Status",
+      "job": "Job",
+      "agent": "Agent",
+      "duration": "Dauer",
+      "avgTokens": "Ø Tokens",
+      "avgCost": "Ø Kosten",
+      "error": "Fehler"
+    },
+    "justNow": "gerade eben",
+    "minutesAgo": "vor {{m}}m",
+    "hoursAgo": "vor {{h}}h",
+    "daysAgo": "vor {{d}}d"
+  },
+  "sessions": {
+    "title": "Aktive Sessions",
+    "description": "Alle aktiven Sessions: direkte Chats, Cron Jobs und Systemprozesse – mit Token-Verbrauch und Kosten pro Session.",
+    "loading": "Aktive Sessions werden geladen...",
+    "noSessions": "Keine aktiven Sessions",
+    "activeSessions": "Aktive Sessions",
+    "totalTokens": "Tokens gesamt",
+    "estimatedCost": "Geschätzte Kosten",
+    "columns": {
+      "sessionKey": "Session-Schlüssel",
+      "type": "Typ",
+      "model": "Modell",
+      "tokens": "Tokens",
+      "cost": "Kosten",
+      "runtime": "Laufzeit",
+      "status": "Status"
+    }
+  },
+  "costs": {
+    "title": "Token-Verbrauch & Kosten",
+    "description": "Kostenaufschlüsselung nach Quelle: Gateway-Metriken, Transcript-Analyse und Agent-Daten. Tageskosten, Modell-Breakdown und Trend über Zeit.",
+    "filters": {
+      "today": "Heute",
+      "yesterday": "Gestern",
+      "7days": "7 Tage",
+      "14days": "14 Tage",
+      "30days": "30 Tage",
+      "90days": "90 Tage",
+      "month": "Monat",
+      "period": "Zeitraum",
+      "monthLabel": "Monat",
+      "chart": "Diagramm",
+      "line": "Linie",
+      "bar": "Balken"
+    },
+    "summary": {
+      "costs": "Kosten ({{period}})",
+      "tokens": "Tokens ({{period}})"
+    },
+    "sections": {
+      "dailyCosts": "Tageskosten",
+      "byAgent": "Kosten nach Agent ({{period}})",
+      "breakdown": "Kostenaufschlüsselung ({{period}})",
+      "byApiKey": "Nach Quelle",
+      "byModel": "Kosten nach Modell"
+    },
+    "table": {
+      "agent": "Agent",
+      "apiKey": "Quelle",
+      "model": "Modell",
+      "tokens": "Tokens",
+      "cost": "Kosten",
+      "percent": "%",
+      "total": "Gesamt"
+    },
+    "captured": "Gesamt: {{transcript}} von {{gateway}} Gateway ({{pct}} erfasst)"
+  },
+  "systemPrompt": {
+    "title": "System-Prompt",
+    "description": "Der aktive System-Prompt – die vollständige Konfiguration und Persönlichkeit, so wie er an die API gesendet wird.",
+    "agent": "Agent",
+    "failed": "System-Prompt konnte nicht geladen werden",
+    "workspace": "Workspace:",
+    "stats": {
+      "files": "Dateien",
+      "tokens": "Tokens (geschätzt)",
+      "chars": "Zeichen"
+    },
+    "badges": {
+      "agentLoaded": "agent-geladen",
+      "autoInjected": "auto-injiziert"
+    }
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "description": "Instanzkonfiguration. Alle persönlichen Daten leben hier – nicht im Quellcode. Änderungen werden beim nächsten Collector-Lauf wirksam.",
+    "save": "Speichern",
+    "saved": "Gespeichert",
+    "loading": "Laden...",
+    "auth": {
+      "title": "Authentifizierung",
+      "password": "Dashboard-Passwort",
+      "passwordDesc": "Leer lassen, um das aktuelle Passwort beizubehalten",
+      "passwordPlaceholder": "Neues Passwort eingeben...",
+      "tokenExpiry": "Token-Ablaufzeit (Stunden)",
+      "tokenExpiryDesc": "Wie lange Anmeldesessions gültig sind"
+    },
+    "paths": {
+      "title": "OpenClaw-Pfade",
+      "sessionsDir": "Sessions-Verzeichnis",
+      "sessionsDirDesc": "Wo OpenClaw Session-JSONL-Dateien speichert",
+      "agentsBase": "Agents-Basisverzeichnis",
+      "agentsBaseDesc": "Stammverzeichnis für alle Agents"
+    },
+    "users": {
+      "title": "Bekannte Nutzer",
+      "description": "Telegram-Sender-IDs Namen zuordnen. Wird verwendet, um Kosten und Sessions bestimmten Nutzern zuzuweisen.",
+      "senderId": "Sender-ID",
+      "senderIdPlaceholder": "z.B. 123456789",
+      "displayName": "Anzeigename",
+      "displayNamePlaceholder": "z.B. Alice",
+      "category": "Kategorie",
+      "categoryPlaceholder": "user/admin",
+      "addUser": "Nutzer hinzufügen"
+    },
+    "apiKeys": {
+      "title": "API-Key-Bezeichnungen",
+      "description": "API-Key-Kennungen lesbaren Namen zuordnen – für die Kosten-Seite.",
+      "keyId": "API-Key-ID",
+      "keyIdPlaceholder": "openclaw-main",
+      "label": "Anzeigebezeichnung",
+      "labelPlaceholder": "Hauptinstanz",
+      "addLabel": "Bezeichnung hinzufügen"
+    },
+    "sessions": {
+      "title": "Bekannte Sessions",
+      "description": "Bestimmte Session-UUIDs Nutzern zuordnen. Nur nötig, wenn die Sender-ID-Erkennung nicht funktioniert.",
+      "uuid": "Session-UUID",
+      "user": "Nutzername",
+      "addSession": "Session hinzufügen"
+    },
+    "pricing": {
+      "title": "Modell-Preise",
+      "description": "Token-Preise in USD pro 1 Mio. Tokens. Wird für Kostenschätzungen verwendet, wenn die API keine Kosten direkt meldet.",
+      "default": "Standard (Fallback für unbekannte Modelle)",
+      "input": "Eingabe",
+      "output": "Ausgabe",
+      "cacheWrite": "Cache Schreiben",
+      "cacheWriteShort": "Cache S.",
+      "cacheRead": "Cache Lesen",
+      "cacheReadShort": "Cache L.",
+      "addModel": "Modell hinzufügen",
+      "modelName": "Modellname"
+    },
+    "rawConfig": {
+      "title": "Rohe Konfiguration",
+      "description": "Die Konfiguration wird in config.yaml im Projektstammverzeichnis gespeichert. Diese kann auch direkt bearbeitet werden."
+    },
+    "language": "Sprache",
+    "languageSelect": "Oberflächensprache",
+    "languageHint": "Gespeichert in localStorage. Sprachdateien:"
+  },
+  "login": {
+    "subtitle": "Ein Endoskop für OpenClaw",
+    "password": "Passwort",
+    "passwordPlaceholder": "Passwort eingeben",
+    "signIn": "Anmelden",
+    "signingIn": "Anmeldung läuft...",
+    "invalidPassword": "Ungültiges Passwort"
+  },
+  "common": {
+    "retry": "Erneut versuchen",
+    "loading": "Laden...",
+    "error": "Fehler",
+    "na": "N/V",
+    "unknown": "Unbekannt",
+    "noData": "Keine Daten"
+  },
+  "pipeline": {
+    "title": "Prompt-Pipeline",
+    "description": "Wie OpenClaw jeden API-Call zusammenbaut und verarbeitet — von der Nutzernachricht bis zur Antwort. Klicke auf einen Knoten für Implementierungsdetails.",
+    "agent": "Agent",
+    "baselineCost": "System-Prompt Grundkosten",
+    "baselineCostDesc": "Wird mit jedem API-Call gesendet, bevor Gesprächsverlauf oder Nutzernachricht kommen",
+    "tokens": "Tokens",
+    "chars": "Zeichen",
+    "simulate": {
+      "title": "Prompt-Simulator",
+      "description": "Gib eine Beispiel-Nachricht ein und sieh den kompletten Prompt-Aufbau mit Token-Breakdown und Kostenschätzung.",
+      "placeholder": "z.B. Wie wird das Wetter morgen?",
+      "button": "Simulieren",
+      "totalInput": "Gesamter Input",
+      "cached": "Gecached (günstig)",
+      "uncached": "Ungecached (Vollpreis)",
+      "outputEst": "Output (gesch.)",
+      "costEst": "Kostenschätzung",
+      "inputCost": "Input-Kosten",
+      "cacheCost": "Cache-Read",
+      "outputCost": "Output-Kosten",
+      "totalCost": "Gesamt pro Call",
+      "withCache": "MIT Cache",
+      "withoutCache": "OHNE Cache",
+      "savings": "Ersparnis",
+      "savingsDesc": "{{pct}}% günstiger durch Prompt-Caching",
+      "perMTok": "/MTok",
+      "perSection": "Token-Aufteilung nach Abschnitt",
+      "cachedBadge": "gecached",
+      "dynamicBadge": "dynamisch",
+      "skillMatch": "Skill-Match",
+      "skillMatchDesc": "OpenClaw würde diese SKILL.md on-demand laden",
+      "noSkillMatch": "Kein Skill gematcht — allgemeiner Assistenten-Modus",
+      "skillLoadTokens": "SKILL.md laden: ~{{tokens}} zusätzliche Tokens"
+    },
+    "nodes": {
+      "userMessage": "Nutzernachricht",
+      "userMessageSub": "Telegram / Discord / WebChat / CLI → Auto-Reply-Handler",
+      "userMessageDetail": "Eingehende Nachricht kommt über das Channel-Plugin (Telegram, Discord, Signal etc.). OpenClaw normalisiert sie in einen TemplateContext mit Sender-ID, Chat-Typ, Reply-Kontext, Gruppen-Metadaten und dem rohen Nachrichtentext.",
+      "sessionResolution": "Session-Auflösung",
+      "sessionResolutionSub": "Bestehende Session finden oder neue erstellen",
+      "sessionResolutionDetail": "Session-Key wird aus Chat-ID + Account-ID abgeleitet. Bestimmt welcher Agent die Nachricht bearbeitet, welcher Gesprächsverlauf geladen wird, und ob es eine Haupt-Session, Cron-Job oder Subagent ist.",
+      "systemPrompt": "System-Prompt-Zusammenbau",
+      "systemPromptSub": "buildAgentSystemPrompt()",
+      "systemPromptDetail": "Der System-Prompt wird aus mehreren Quellen in fester Reihenfolge zusammengebaut. Jeder Abschnitt erhöht die Basis-Token-Kosten, die mit jedem API-Call gesendet werden.",
+      "runtimeDirectives": "Runtime-Direktiven",
+      "runtimeDirectivesDesc": "Tool-Policies, Sicherheitsregeln, CLI-Referenz, Model-Aliase, Reply-Tags, Messaging-Konfig, Reaktionen, Stille Antworten, Sandbox-Info. Dynamisch pro Session generiert.",
+      "skillsIndex": "Skills-Index",
+      "skillsIndexDesc": "XML-Block mit Skills (Name + Beschreibung + Pfad). Vollständige SKILL.md wird nur bei Bedarf geladen.",
+      "workspaceFiles": "Workspace-Dateien",
+      "workspaceFilesDesc": "Geladen via loadWorkspaceBootstrapFiles(), max 2MB pro Datei, Gesamtbudget begrenzt.",
+      "inboundMeta": "Inbound-Meta",
+      "inboundMetaDesc": "Chat-Typ, Sender-ID, Kanal, Account — als JSON im System-Prompt injiziert. Gruppen-Chat-Kontext, Heartbeat-Prompt, Reaktions-Guidance werden bedingt hinzugefügt.",
+      "contextEngine": "Context Engine — Assemblierung",
+      "contextEngineSub": "LCM / Cache-TTL-Pruning — verwaltet Gesprächsverlauf innerhalb des Token-Budgets",
+      "contextEngineDetail": "Die Context Engine entscheidet, welcher Gesprächsverlauf ins Token-Budget passt. Mit lossless-claw (LCM): alte Turns werden zu komprimierten Nodes zusammengefasst, aktuelle bleiben vollständig, Abruf on-demand via lcm_grep / lcm_expand. Mit Legacy cache-ttl: alte Nachrichten werden nach TTL-Ablauf gelöscht.",
+      "toolResolution": "Tool-Auflösung",
+      "toolResolutionSub": "Tools filtern nach Policy, Sandbox-Einschränkungen und toolsAllow",
+      "toolResolutionDetail": "Verfügbare Tools werden bestimmt durch: Exec-Security-Policy, Sandbox-Modus, Kanal-Fähigkeiten, toolsAllow-Einschränkungen und Agent-Konfiguration. Jedes Tool bekommt eine JSON-Schema-Definition für das Modell.",
+      "apiCall": "API-Call an Model-Provider",
+      "apiCallSub": "Anthropic / OpenAI / OpenRouter — mit Prompt-Caching",
+      "apiCallDetail": "Finales Payload: System-Prompt (mit Cache-Boundary-Marker für Anthropic), Gesprächsnachrichten, Tool-Definitionen und Modell-Parameter. Anthropic nutzt Prompt-Caching: der stabile System-Prompt-Präfix wird serverseitig über Turns hinweg gecached.",
+      "toolLoop": "Tool-Ausführungs-Schleife",
+      "toolLoopSub": "Modell ruft Tools auf → Ergebnisse zurück → Modell fährt fort",
+      "toolLoopDetail": "Wenn die Modell-Antwort Tool-Aufrufe enthält, führt OpenClaw diese aus und füttert die Ergebnisse als tool_result-Nachrichten zurück. Das Modell setzt dann fort — das kann mehrfach pro Turn loopen.",
+      "ingest": "Context Engine — Ingest + AfterTurn",
+      "ingestSub": "Neue Nachrichten speichern, Kompaktierung bei Bedarf auslösen",
+      "ingestDetail": "Nach Abschluss des Turns werden alle neuen Nachrichten in die Context Engine aufgenommen. LCM kann Hintergrund-Kompaktierung auslösen, wenn das Gespräch den Schwellenwert überschreitet.",
+      "delivery": "Antwort-Zustellung",
+      "deliverySub": "Zurück an Telegram / Discord / WebChat via Channel-Plugin",
+      "deliveryDetail": "Die Assistenten-Antwort wird über das ursprüngliche Channel-Plugin zurückgeleitet. Formatierung wird pro Oberfläche angepasst. Reply-Tags werden zu nativen Antworten/Zitaten aufgelöst."
+    },
+    "connectors": {
+      "inboundNormalized": "Inbound-Kontext normalisiert",
+      "sessionIdentified": "Session identifiziert",
+      "systemPromptReady": "System-Prompt bereit",
+      "messagesAssembled": "Nachrichten assembliert",
+      "toolsReady": "Tools + System-Prompt + Nachrichten",
+      "modelResponds": "Modell antwortet",
+      "finalResponse": "Finale Antwort bereit",
+      "responseDelivered": "Antwort zugestellt"
+    }
+  },
+  "simulator": {
+    "title": "Prompt-Simulator",
+    "description": "Gib eine Beispiel-Nachricht ein und sieh den kompletten Prompt-Aufbau mit Token-Breakdown und Kostenvergleich.",
+    "agentSelect": "Agent (Kontext)",
+    "modelSelect": "Modell (Preise)",
+    "inputTitle": "Nachricht eingeben",
+    "inputDesc": "Simuliert welche Prompt-Bestandteile und Kosten für diese Nachricht anfallen würden.",
+    "placeholder": "z.B. Wie wird das Wetter morgen?",
+    "button": "Simulieren",
+    "totalInput": "Gesamter Input",
+    "cached": "Gecached (günstig)",
+    "uncached": "Ungecached (Vollpreis)",
+    "inputCost": "Input-Kosten",
+    "outputCost": "Output-Kosten",
+    "totalCost": "Gesamt pro Call",
+    "withCache": "MIT Cache",
+    "withoutCache": "OHNE Cache",
+    "savings": "Ersparnis",
+    "savingsDesc": "{{pct}}% günstiger durch Prompt-Caching",
+    "perMTok": "/MTok",
+    "perSection": "Token-Aufteilung nach Abschnitt",
+    "cachedBadge": "gecached",
+    "dynamicBadge": "dynamisch",
+    "skillMatch": "Skill-Match",
+    "skillMatchDesc": "OpenClaw würde diese SKILL.md on-demand laden",
+    "noSkillMatch": "Kein Skill gematcht — allgemeiner Assistenten-Modus",
+    "skillLoadTokens": "SKILL.md laden: ~{{tokens}} zusätzliche Tokens"
+  },
+  "visualizer": {
+    "title": "Prompt Visualizer",
+    "description": "Schritt-für-Schritt-Visualisierung der echten OpenClaw Prompt-Pipeline",
+    "agent": "Agent",
+    "model": "Modell",
+    "userMessage": "Beispiel-Nachricht",
+    "run": "Visualisieren",
+    "analyzing": "Pipeline wird analysiert...",
+    "skillLoaded": "Skill geladen: {{skill}}",
+    "skillLoadedDesc": "SKILL.md wird on-demand in den Prompt injiziert.",
+    "noSkillMatch": "Kein Skill-Match",
+    "noSkillMatchDesc": "Kein Skill über dem Threshold gefunden. Kein SKILL.md geladen.",
+    "totalScore": "Gesamt-Score",
+    "cost": "Kosten",
+    "totalTokens": "Gesamt: {{tokens}} Tokens",
+    "message": "👤 Nachricht:",
+    "answer": "🤖 Antwort:",
+    "loadingMore": "Lade weitere...",
+    "allLoaded": "Alle {{count}} Runs geladen",
+    "noRuns": "Keine Runs gefunden.",
+    "visualizePrompt": "Prompt visualisieren",
+    "realRunsDesc": "Token-Verbrauch und Kosten der letzten echten API-Calls aus den Session-Logs"
+  },
+  "insights": {
+    "costPerMessage": "💬 Kosten pro Nachricht ({{period}})",
+    "cacheSavings": "🛡️ Cache-Ersparnis ({{period}})",
+    "savings": "Ersparnis",
+    "cheaper": "{{pct}}% günstiger",
+    "withoutCache": "Ohne Cache:",
+    "withCache": "Mit Cache:",
+    "cacheTokensRead": "Cache-Tokens gelesen:",
+    "mostExpensiveTurn": "🔥 Teuerster Turn ({{period}})",
+    "outputPerDollar": "⚡ Output pro Dollar ({{period}})",
+    "tokensPer": "Tokens/$",
+    "cronCosts": "⏰ Cron-Kosten ({{period}})",
+    "runs": "Runs",
+    "total": "Gesamt",
+    "perRun": "Pro Run",
+    "turns": "{{count}} Turns"
+  },
+  "language": {
+    "en": "EN",
+    "de": "DE"
+  }
+}

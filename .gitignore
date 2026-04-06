@@ -1,0 +1,48 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Database + runtime state
+*.db
+data/indexer-state.json
+*.db-journal
+*.db-wal
+*.db-shm
+data/*.db
+
+# Node/Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Config (contains secrets)
+config.yaml
+
+# Environment
+.env
+.env.local
+.env.production
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Misc
+*.bak
+*.tmp
+data/indexer-state.json

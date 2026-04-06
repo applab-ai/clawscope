@@ -1,0 +1,53 @@
+# Server (override via CLAWSCOPE_HOST / CLAWSCOPE_PORT env vars)
+server:
+  host: 0.0.0.0
+  port: 8000
+
+auth:
+  password: CHANGE_ME
+  secret_key: CHANGE_ME_RANDOM_SECRET
+  token_expire_hours: 24
+
+paths:
+  sessions_dir: ~/.openclaw/agents/main/sessions
+  agents_base: ~/.openclaw/agents
+
+users:
+- id: '123456789'
+  name: Alice
+  category: user
+- id: '987654321'
+  name: Bob
+  category: admin
+
+known_sessions: {}
+
+api_key_labels: {}
+
+default_pricing:
+  input: 3
+  output: 15
+  cache_write: 3.75
+  cache_read: 0.3
+
+model_pricing:
+  claude-opus-4-6:
+    input: 5
+    output: 25
+    cache_write: 6.25
+    cache_read: 0.5
+  claude-sonnet-4-6:
+    input: 3
+    output: 15
+    cache_write: 3.75
+    cache_read: 0.3
+  claude-haiku-4-5:
+    input: 1
+    output: 5
+    cache_write: 1.25
+    cache_read: 0.1
+
+user_categories:
+  cron: Crons
+  subagent: Subagents
+  unknown: Subagents

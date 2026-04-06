@@ -1,0 +1,460 @@
+{
+  "dashboard": {
+    "title": "Clawscope",
+    "refresh": "Refresh",
+    "logout": "Logout",
+    "nav": {
+      "overview": "Overview",
+      "promptHistory": "Prompt History",
+      "liveAgents": "Live Agents",
+      "cronJobs": "Cron Jobs",
+      "cronHistory": "Cron History",
+      "sessions": "Active Sessions",
+      "costs": "Token Costs",
+      "systemPrompt": "System Prompt",
+      "promptPipeline": "Prompt Pipeline",
+      "promptSimulator": "Prompt Simulator",
+      "promptVisualizer": "Prompt Visualizer",
+      "settings": "Settings",
+      "collectorStatus": "Collector Status"
+    }
+  },
+  "stats": {
+    "loadingStats": "Loading dashboard stats...",
+    "noData": "No data available",
+    "lastUpdated": "Last updated:",
+    "cronJobs": "Cron Jobs",
+    "activeSessions": "Active Sessions",
+    "dailyCosts": "Daily Costs",
+    "monthlyCosts": "Monthly Costs",
+    "systemHealth": "System Health",
+    "systemHealthDesc": "Overall system status and monitoring",
+    "health": {
+      "good": "Good",
+      "warning": "Warning",
+      "critical": "Critical",
+      "unknown": "Unknown"
+    },
+    "overview": {
+      "description": "Overview of the entire OpenClaw instance: cron jobs, active sessions, token usage, and system health at a glance."
+    },
+    "visualizerCta": "See exactly how OpenClaw assembles every prompt — step by step, token by token."
+  },
+  "promptHistory": {
+    "title": "Prompt History",
+    "description": "Every API call in detail: user messages, assistant responses, token usage and cost per turn — chronologically from session logs.",
+    "views": {
+      "timeline": "Timeline",
+      "sessions": "Sessions"
+    },
+    "filters": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "7days": "7 Days",
+      "30days": "30 Days",
+      "custom": "Custom…",
+      "allUsers": "All Users",
+      "from": "From",
+      "to": "To"
+    },
+    "stats": {
+      "sessions": "Sessions",
+      "turns": "Turns",
+      "apiCalls": "API Calls",
+      "tokens": "Tokens",
+      "cost": "Cost"
+    },
+    "noTurns": "No turns in the selected period",
+    "noSessions": "No sessions in the selected period",
+    "noApiCalls": "No API Calls",
+    "session": "Session:",
+    "user": "User:",
+    "assistant": "Assistant:",
+    "input": "Input",
+    "output": "Output",
+    "cacheRead": "Cache R",
+    "cacheWrite": "Cache W",
+    "preview": "Preview",
+    "noText": "(no text)"
+  },
+  "liveAgents": {
+    "title": "Live Agents",
+    "description": "All spawned sub-agents: task description, tool calls, runtime and costs. Expand for the full trace — what did the agent do and what came out.",
+    "running": "running",
+    "active": "Active",
+    "noAgents": "No agents in the selected period",
+    "task": "Task:",
+    "result": "Result:",
+    "toolCalls": "Tool calls",
+    "filters": {
+      "1h": "1h",
+      "6h": "6h",
+      "24h": "24h",
+      "3days": "3 Days",
+      "7days": "7 Days",
+      "allStatus": "All Status",
+      "completed": "Completed"
+    },
+    "stats": {
+      "agents": "Agents",
+      "active": "Active",
+      "apiCalls": "API Calls",
+      "toolCalls": "Tool Calls",
+      "costs": "Costs"
+    }
+  },
+  "cronJobs": {
+    "title": "Cron Jobs",
+    "description": "All configured cron jobs with schedules, last run status, and error history.",
+    "loading": "Loading cron jobs...",
+    "noCronJobs": "No cron jobs found",
+    "errors": "Errors",
+    "recentErrors": "Recent Errors",
+    "columns": {
+      "name": "Name",
+      "schedule": "Schedule",
+      "model": "Model",
+      "status": "Status",
+      "errors": "Errors",
+      "runs": "Runs",
+      "tokensPerRun": "Tokens/Run",
+      "costPerRun": "$/Run",
+      "totalCost": "Total $",
+      "nextRun": "Next Run"
+    }
+  },
+  "cronHistory": {
+    "title": "Cron History",
+    "description": "Complete execution history of all cron jobs: when what ran, how long, and whether it succeeded or had errors.",
+    "loadingMore": "Loading more...",
+    "allLoaded": "All {{total}} runs loaded",
+    "runsOf": "{{loaded}} / {{total}} Runs",
+    "columns": {
+      "time": "Time",
+      "status": "Status",
+      "job": "Job",
+      "agent": "Agent",
+      "duration": "Duration",
+      "avgTokens": "Avg Tokens",
+      "avgCost": "Avg Cost",
+      "error": "Error"
+    },
+    "justNow": "just now",
+    "minutesAgo": "{{m}}m ago",
+    "hoursAgo": "{{h}}h ago",
+    "daysAgo": "{{d}}d ago"
+  },
+  "sessions": {
+    "title": "Active Sessions",
+    "description": "All active sessions: direct chats, cron jobs, and system processes — with token usage and cost per session.",
+    "loading": "Loading active sessions...",
+    "noSessions": "No active sessions",
+    "activeSessions": "Active Sessions",
+    "totalTokens": "Total Tokens",
+    "estimatedCost": "Estimated Cost",
+    "columns": {
+      "sessionKey": "Session Key",
+      "type": "Type",
+      "model": "Model",
+      "tokens": "Tokens",
+      "cost": "Cost",
+      "runtime": "Runtime",
+      "status": "Status"
+    }
+  },
+  "costs": {
+    "title": "Token Usage & Costs",
+    "description": "Cost breakdown by source: gateway metrics, transcript analysis, and agent data. Daily costs, model breakdown, and trend over time.",
+    "filters": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "7days": "7 Days",
+      "14days": "14 Days",
+      "30days": "30 Days",
+      "90days": "90 Days",
+      "month": "Month",
+      "period": "Period",
+      "monthLabel": "Month",
+      "chart": "Chart",
+      "line": "Line",
+      "bar": "Bar"
+    },
+    "summary": {
+      "costs": "Costs ({{period}})",
+      "tokens": "Tokens ({{period}})"
+    },
+    "sections": {
+      "dailyCosts": "Daily Costs",
+      "byAgent": "Costs by Agent ({{period}})",
+      "breakdown": "Cost Breakdown ({{period}})",
+      "byApiKey": "By Source",
+      "byModel": "By Model"
+    },
+    "table": {
+      "agent": "Agent",
+      "apiKey": "Source",
+      "model": "Model",
+      "tokens": "Tokens",
+      "cost": "Cost",
+      "percent": "%",
+      "total": "Total"
+    },
+    "captured": "Total: {{transcript}} of {{gateway}} Gateway ({{pct}} captured)"
+  },
+  "systemPrompt": {
+    "title": "System Prompt",
+    "description": "The active system prompt — the full configuration and personality as sent to the API.",
+    "agent": "Agent",
+    "failed": "Failed to load system prompt",
+    "workspace": "Workspace:",
+    "stats": {
+      "files": "Files",
+      "tokens": "Tokens (estimated)",
+      "chars": "Characters"
+    },
+    "badges": {
+      "agentLoaded": "agent-loaded",
+      "autoInjected": "auto-injected"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Instance configuration. All personal data lives here — not in source code. Changes take effect on next collector run.",
+    "save": "Save",
+    "saved": "Saved",
+    "loading": "Loading...",
+    "auth": {
+      "title": "Authentication",
+      "password": "Dashboard Password",
+      "passwordDesc": "Leave empty to keep current password",
+      "passwordPlaceholder": "Enter new password...",
+      "tokenExpiry": "Token Expiry (hours)",
+      "tokenExpiryDesc": "How long login sessions last"
+    },
+    "paths": {
+      "title": "OpenClaw Paths",
+      "sessionsDir": "Sessions Directory",
+      "sessionsDirDesc": "Where OpenClaw stores session JSONL files",
+      "agentsBase": "Agents Base Directory",
+      "agentsBaseDesc": "Root directory for all agents"
+    },
+    "users": {
+      "title": "Known Users",
+      "description": "Map Telegram sender IDs to names. Used to attribute costs and sessions to specific users.",
+      "senderId": "Sender ID",
+      "senderIdPlaceholder": "e.g. 123456789",
+      "displayName": "Display Name",
+      "displayNamePlaceholder": "e.g. Alice",
+      "category": "Category",
+      "categoryPlaceholder": "user/admin",
+      "addUser": "Add User"
+    },
+    "apiKeys": {
+      "title": "API Key Labels",
+      "description": "Map API key identifiers to human-readable names for the Costs page.",
+      "keyId": "API Key ID",
+      "keyIdPlaceholder": "openclaw-main",
+      "label": "Display Label",
+      "labelPlaceholder": "Main Instance",
+      "addLabel": "Add Label"
+    },
+    "sessions": {
+      "title": "Known Sessions",
+      "description": "Map specific session UUIDs to users. Only needed when sender ID detection doesn't work.",
+      "uuid": "Session UUID",
+      "user": "User Name",
+      "addSession": "Add Session"
+    },
+    "pricing": {
+      "title": "Model Pricing",
+      "description": "Token pricing in USD per 1M tokens. Used for cost estimation when the API doesn't report costs directly.",
+      "default": "Default (fallback for unknown models)",
+      "input": "Input",
+      "output": "Output",
+      "cacheWrite": "Cache Write",
+      "cacheWriteShort": "Cache Wr.",
+      "cacheRead": "Cache Read",
+      "cacheReadShort": "Cache Rd.",
+      "addModel": "Add Model",
+      "modelName": "Model name"
+    },
+    "rawConfig": {
+      "title": "Raw Config",
+      "description": "The configuration is stored in config.yaml in the project root. You can also edit it directly."
+    },
+    "language": "Language",
+    "languageSelect": "Interface Language",
+    "languageHint": "Saved in localStorage. Translation files:"
+  },
+  "login": {
+    "subtitle": "An endoscope for OpenClaw",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "signIn": "Sign in",
+    "signingIn": "Signing in...",
+    "invalidPassword": "Invalid password"
+  },
+  "common": {
+    "retry": "Retry",
+    "loading": "Loading...",
+    "error": "Error",
+    "na": "N/A",
+    "unknown": "Unknown",
+    "noData": "No data"
+  },
+  "pipeline": {
+    "title": "Prompt Pipeline",
+    "description": "How OpenClaw assembles and processes every API call — from user input to response delivery. Click any node to see implementation details.",
+    "agent": "Agent",
+    "baselineCost": "System Prompt Baseline Cost",
+    "baselineCostDesc": "Sent with every API call before any conversation history or user message",
+    "tokens": "tokens",
+    "chars": "chars",
+    "simulate": {
+      "title": "Prompt Simulator",
+      "description": "Enter a sample message to see the full prompt composition with token breakdown and cost estimate.",
+      "placeholder": "e.g. How's the weather tomorrow?",
+      "button": "Simulate",
+      "totalInput": "Total Input",
+      "cached": "Cached (cheap)",
+      "uncached": "Uncached (full price)",
+      "outputEst": "Output (est.)",
+      "costEst": "Cost Estimate",
+      "inputCost": "Input cost",
+      "cacheCost": "Cache read",
+      "outputCost": "Output cost",
+      "totalCost": "Total per call",
+      "withCache": "WITH Cache",
+      "withoutCache": "WITHOUT Cache",
+      "savings": "Savings",
+      "savingsDesc": "{{pct}}% cheaper with prompt caching",
+      "perMTok": "/MTok",
+      "perSection": "Token Breakdown by Section",
+      "cachedBadge": "cached",
+      "dynamicBadge": "dynamic",
+      "skillMatch": "Skill Match",
+      "skillMatchDesc": "OpenClaw would load this SKILL.md on demand",
+      "noSkillMatch": "No skill matched — general assistant mode",
+      "skillLoadTokens": "SKILL.md load: ~{{tokens}} additional tokens"
+    },
+    "nodes": {
+      "userMessage": "User Message",
+      "userMessageSub": "Telegram / Discord / WebChat / CLI → auto-reply handler",
+      "userMessageDetail": "Inbound message arrives via channel plugin (Telegram, Discord, Signal, etc). OpenClaw normalizes it into a TemplateContext with sender ID, chat type, reply context, group metadata, and the raw message body.",
+      "sessionResolution": "Session Resolution",
+      "sessionResolutionSub": "Route to existing session or create new one",
+      "sessionResolutionDetail": "Session key derived from chat ID + account ID. Determines which agent handles the message, which conversation history to load, and whether this is a main session, cron job, or subagent.",
+      "systemPrompt": "System Prompt Assembly",
+      "systemPromptSub": "buildAgentSystemPrompt()",
+      "systemPromptDetail": "The system prompt is assembled from multiple sources in a fixed order. Each section adds to the baseline token cost that is sent with every API call.",
+      "runtimeDirectives": "Runtime Directives",
+      "runtimeDirectivesDesc": "Tool policies, safety rules, CLI reference, model aliases, reply tags, messaging config, reactions, silent replies, sandbox info. Generated dynamically per session.",
+      "skillsIndex": "Skills Index",
+      "skillsIndexDesc": "XML block listing skills (name + description + path). Full SKILL.md loaded on-demand only.",
+      "workspaceFiles": "Workspace Files",
+      "workspaceFilesDesc": "Loaded via loadWorkspaceBootstrapFiles(), truncated per file to >2MB, total budget enforced.",
+      "inboundMeta": "Inbound Meta",
+      "inboundMetaDesc": "Chat type, sender ID, channel, account — injected as JSON in system prompt. Group chat context, heartbeat prompt, reaction guidance added conditionally.",
+      "contextEngine": "Context Engine — Assemble",
+      "contextEngineSub": "LCM / cache-ttl pruning — manages conversation history within token budget",
+      "contextEngineDetail": "The context engine decides which conversation history fits the token budget. With lossless-claw (LCM): summarizes old turns into compressed nodes, keeps recent turns verbatim, retrieves on demand via lcm_grep / lcm_expand. With legacy cache-ttl: drops old messages after TTL expiry.",
+      "toolResolution": "Tool Resolution",
+      "toolResolutionSub": "Filter tools by policy, sandbox constraints, and toolsAllow",
+      "toolResolutionDetail": "Available tools are resolved based on: exec security policy, sandbox mode, channel capabilities, toolsAllow restrictions, and agent config. Each tool gets a JSON schema definition sent to the model.",
+      "apiCall": "API Call to Model Provider",
+      "apiCallSub": "Anthropic / OpenAI / OpenRouter — with prompt caching",
+      "apiCallDetail": "Final payload assembled: system prompt (with cache boundary marker for Anthropic), conversation messages, tool definitions, and model parameters. Anthropic uses prompt caching: the stable system prompt prefix is cached server-side across turns.",
+      "toolLoop": "Tool Execution Loop",
+      "toolLoopSub": "Model may call tools → results fed back → model continues",
+      "toolLoopDetail": "If the model response contains tool calls, OpenClaw executes them and feeds the results back as tool_result messages. The model then continues — this can loop multiple times per turn.",
+      "ingest": "Context Engine — Ingest + AfterTurn",
+      "ingestSub": "Store new messages, trigger compaction if needed",
+      "ingestDetail": "After the turn completes, all new messages are ingested into the context engine. LCM may trigger background compaction if the conversation exceeds its threshold.",
+      "delivery": "Response Delivery",
+      "deliverySub": "Route back to Telegram / Discord / WebChat via channel plugin",
+      "deliveryDetail": "The assistant's text response is routed back through the originating channel plugin. Formatting is adapted per surface. Reply tags are resolved to native reply/quote."
+    },
+    "connectors": {
+      "inboundNormalized": "Inbound context normalized",
+      "sessionIdentified": "Session identified",
+      "systemPromptReady": "System prompt ready",
+      "messagesAssembled": "Messages assembled",
+      "toolsReady": "Tools + system prompt + messages",
+      "modelResponds": "Model responds",
+      "finalResponse": "Final response ready",
+      "responseDelivered": "Response delivered"
+    }
+  },
+  "simulator": {
+    "title": "Prompt Simulator",
+    "description": "Enter a sample message to see the full prompt composition with token breakdown and cost comparison.",
+    "agentSelect": "Agent (context)",
+    "modelSelect": "Model (pricing)",
+    "inputTitle": "Enter message",
+    "inputDesc": "Simulates which prompt components and costs would be incurred for this message.",
+    "placeholder": "e.g. What's the weather tomorrow?",
+    "button": "Simulate",
+    "totalInput": "Total Input",
+    "cached": "Cached (cheap)",
+    "uncached": "Uncached (full price)",
+    "inputCost": "Input cost",
+    "outputCost": "Output cost",
+    "totalCost": "Total per call",
+    "withCache": "WITH Cache",
+    "withoutCache": "WITHOUT Cache",
+    "savings": "Savings",
+    "savingsDesc": "{{pct}}% cheaper with prompt caching",
+    "perMTok": "/MTok",
+    "perSection": "Token breakdown by section",
+    "cachedBadge": "cached",
+    "dynamicBadge": "dynamic",
+    "skillMatch": "Skill match",
+    "skillMatchDesc": "OpenClaw would load this SKILL.md on demand",
+    "noSkillMatch": "No skill matched — general assistant mode",
+    "skillLoadTokens": "SKILL.md load: ~{{tokens}} additional tokens"
+  },
+  "visualizer": {
+    "title": "Prompt Visualizer",
+    "description": "Step-by-step visualization of the real OpenClaw prompt pipeline",
+    "agent": "Agent",
+    "model": "Model",
+    "userMessage": "Sample message",
+    "run": "Visualize",
+    "analyzing": "Analyzing pipeline...",
+    "skillLoaded": "Skill loaded: {{skill}}",
+    "skillLoadedDesc": "SKILL.md is injected on-demand into the prompt.",
+    "noSkillMatch": "No skill match",
+    "noSkillMatchDesc": "No skill above threshold found. No SKILL.md loaded.",
+    "totalScore": "Total Score",
+    "cost": "Cost",
+    "totalTokens": "Total: {{tokens}} Tokens",
+    "message": "👤 Message:",
+    "answer": "🤖 Answer:",
+    "loadingMore": "Loading more...",
+    "allLoaded": "All {{count}} runs loaded",
+    "noRuns": "No runs found.",
+    "visualizePrompt": "Visualize prompt",
+    "realRunsDesc": "Token usage and costs from recent real API calls in the session logs"
+  },
+  "insights": {
+    "costPerMessage": "💬 Cost per message ({{period}})",
+    "cacheSavings": "🛡️ Cache savings ({{period}})",
+    "savings": "Savings",
+    "cheaper": "{{pct}}% cheaper",
+    "withoutCache": "Without cache:",
+    "withCache": "With cache:",
+    "cacheTokensRead": "Cache tokens read:",
+    "mostExpensiveTurn": "🔥 Most expensive turn ({{period}})",
+    "outputPerDollar": "⚡ Output per dollar ({{period}})",
+    "tokensPer": "Tokens/$",
+    "cronCosts": "⏰ Cron costs ({{period}})",
+    "runs": "Runs",
+    "total": "Total",
+    "perRun": "Per run",
+    "turns": "{{count}} turns"
+  },
+  "language": {
+    "en": "EN",
+    "de": "DE"
+  }
+}
