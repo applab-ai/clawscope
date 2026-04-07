@@ -1630,169 +1630,96 @@ async def visualize_prompt(body: dict, user=Depends(check_session)):
 
 
 @app.get("/api/real-prompts")
-async def get_real_prompts(limit: int = 20, offset: int = 0, agent: str = "main", user=Depends(check_session)):
-    """Return recent real prompt runs with token/cost breakdown from session JSONLs."""
-    import glob
-    # Use agent-specific sessions directory
-    agents_base = config.get_agents_base()
-    sessions_dir = os.path.join(agents_base, agent, 'sessions')
-    if not os.path.isdir(sessions_dir):
-        sessions_dir = config.get_sessions_dir()  # fallback to main
-    # Load more files when paginating deeper
-    max_files = max(10, (offset + limit) // 5 + 10)
-    jsonl_files = sorted(glob.glob(os.path.join(sessions_dir, '*.jsonl')), key=os.path.getmtime, reverse=True)[:max_files]
+async def get_real_prompts(
+    limit: int = 20,
+    offset: int = 0,
+    agent: str = "main",
+    db: Session = Depends(get_db),
+    user=Depends(check_session)
+):
+    """Return recent real prompt runs from indexed prompt history tables."""
+    turns = (
+        db.query(PromptTurn, PromptSession)
+        .join(PromptSession, PromptTurn.session_id == PromptSession.session_id)
+        .filter(PromptSession.agent_id == agent)
+        .order_by(desc(PromptTurn.started_at))
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    if not turns and agent == "main":
+        turns = (
+            db.query(PromptTurn, PromptSession)
+            .join(PromptSession, PromptTurn.session_id == PromptSession.session_id)
+            .filter((PromptSession.agent_id == "main") | (PromptSession.agent_id.is_(None)))
+            .order_by(desc(PromptTurn.started_at))
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+
+    if not turns:
+        return []
+
+    turn_keys = [(turn.session_id, turn.turn_index) for turn, _session in turns]
+    session_ids = sorted({turn.session_id for turn, _session in turns})
+
+    calls = (
+        db.query(PromptApiCall)
+        .filter(PromptApiCall.session_id.in_(session_ids))
+        .order_by(PromptApiCall.session_id, PromptApiCall.turn_index, PromptApiCall.call_index)
+        .all()
+    )
+
+    calls_by_turn = {}
+    for call in calls:
+        key = (call.session_id, call.turn_index)
+        calls_by_turn.setdefault(key, []).append(call)
 
     runs = []
-    for jf in jsonl_files:
-        session_id = os.path.basename(jf).replace('.jsonl', '')
-        try:
-            with open(jf, 'r') as f:
-                lines = f.readlines()
-        except Exception:
-            continue
+    for turn, session in turns:
+        key = (turn.session_id, turn.turn_index)
+        turn_calls = calls_by_turn.get(key, [])
+        api_call_details = [
+            {
+                'tokens': (call.tokens_input or 0) + (call.tokens_output or 0) + (call.tokens_cache_read or 0) + (call.tokens_cache_write or 0),
+                'output': call.tokens_output or 0,
+                'cost': round(call.cost_total or 0, 6),
+                'response_preview': (call.content_preview or '')[:500],
+            }
+            for call in turn_calls
+        ]
 
-        # Find user messages and their following assistant responses
-        messages = []
-        for line in lines:
-            try:
-                d = json.loads(line)
-                if d.get('type') == 'message':
-                    messages.append(d)
-            except Exception:
-                continue
+        total_tokens = (
+            (turn.total_tokens_input or 0)
+            + (turn.total_tokens_output or 0)
+            + (turn.total_tokens_cache_read or 0)
+            + (turn.total_tokens_cache_write or 0)
+        )
 
-        # --- helper: extract clean user text from OpenClaw envelope ---
-        def extract_user_text(content):
-            if isinstance(content, list):
-                raw = ' '.join(c.get('text', '') for c in content if isinstance(c, dict) and c.get('type') == 'text')
-            elif isinstance(content, str):
-                raw = content
-            else:
-                return ''
-            if 'Conversation info' in raw:
-                parts = raw.split('```')
-                if len(parts) >= 3:
-                    candidate = parts[-1].strip()
-                    if candidate and not candidate.startswith('{') and not candidate.startswith('Sender'):
-                        return candidate[:200]
-                    for p in reversed(parts):
-                        p = p.strip()
-                        if p and not p.startswith('{') and not p.startswith('json') and not p.startswith('Conversation') and not p.startswith('Sender') and len(p) > 2:
-                            return p[:200]
-                return raw[:200]
-            return raw[:200]
+        runs.append({
+            'session_id': turn.session_id,
+            'timestamp': turn.started_at.isoformat() if turn.started_at else None,
+            'model': turn.model or session.primary_model or 'unknown',
+            'user_message': turn.user_message or '',
+            'assistant_response': (turn.assistant_response or '')[:2000],
+            'api_calls': turn.api_calls or len(turn_calls),
+            'api_call_details': api_call_details,
+            'input_tokens': turn.total_tokens_input or 0,
+            'output_tokens': turn.total_tokens_output or 0,
+            'cache_read': turn.total_tokens_cache_read or 0,
+            'cache_write': turn.total_tokens_cache_write or 0,
+            'total_tokens': total_tokens,
+            'cost_total': round(turn.total_cost or 0, 6),
+            'cost_input': sum((call.cost_input or 0) for call in turn_calls),
+            'cost_output': sum((call.cost_output or 0) for call in turn_calls),
+            'cost_cache_read': sum((call.cost_cache_read or 0) for call in turn_calls),
+            'cost_cache_write': sum((call.cost_cache_write or 0) for call in turn_calls),
+            'cache_pct': round(((turn.total_tokens_cache_read or 0) / max(total_tokens, 1)) * 100, 1),
+        })
 
-        # --- Group messages into user turns ---
-        # A "turn" = one user message + all assistant responses until the next user message
-        turns = []  # list of (user_msg_index, [assistant_msg_indices])
-        current_user_idx = None
-        current_assistants = []
-        for idx, m in enumerate(messages):
-            role = m.get('message', {}).get('role', '')
-            if role == 'user':
-                if current_user_idx is not None and current_assistants:
-                    turns.append((current_user_idx, current_assistants))
-                current_user_idx = idx
-                current_assistants = []
-            elif role == 'assistant':
-                usage = m.get('message', {}).get('usage', {})
-                if usage.get('totalTokens', 0) > 0:
-                    current_assistants.append(idx)
-        if current_user_idx is not None and current_assistants:
-            turns.append((current_user_idx, current_assistants))
-
-        # Process turns in reverse (newest first)
-        for user_idx, asst_indices in reversed(turns):
-            user_msg = messages[user_idx].get('message', {})
-            user_text = extract_user_text(user_msg.get('content', ''))
-
-            # Aggregate all API calls in this turn
-            api_calls = []
-            total_input = 0
-            total_output = 0
-            total_cache_read = 0
-            total_cache_write = 0
-            total_tokens = 0
-            total_cost = 0
-            model = 'unknown'
-            last_timestamp = ''
-
-            for ai in asst_indices:
-                amsg = messages[ai].get('message', {})
-                usage = amsg.get('usage', {})
-                cost_data = usage.get('cost', {})
-                call_input = usage.get('input', 0)
-                call_output = usage.get('output', 0)
-                call_cache_read = usage.get('cacheRead', 0)
-                call_cache_write = usage.get('cacheWrite', 0)
-                call_total = usage.get('totalTokens', 0)
-                call_cost = cost_data.get('total', 0)
-
-                total_input += call_input
-                total_output += call_output
-                total_cache_read += call_cache_read
-                total_cache_write += call_cache_write
-                total_tokens += call_total
-                total_cost += call_cost
-                model = amsg.get('model', model)
-                last_timestamp = messages[ai].get('timestamp', last_timestamp)
-
-                # Extract text from this assistant response
-                a_content = amsg.get('content', '')
-                if isinstance(a_content, list):
-                    a_text = ' '.join(c.get('text', '') for c in a_content if isinstance(c, dict) and c.get('type') == 'text')
-                elif isinstance(a_content, str):
-                    a_text = a_content
-                else:
-                    a_text = ''
-
-                api_calls.append({
-                    'tokens': call_total,
-                    'output': call_output,
-                    'cost': call_cost,
-                    'response_preview': a_text[:500],
-                })
-
-            # Final assistant response = last one with text
-            final_response = ''
-            for ai in reversed(asst_indices):
-                amsg = messages[ai].get('message', {})
-                a_content = amsg.get('content', '')
-                if isinstance(a_content, list):
-                    final_response = ' '.join(c.get('text', '') for c in a_content if isinstance(c, dict) and c.get('type') == 'text')
-                elif isinstance(a_content, str):
-                    final_response = a_content
-                if final_response.strip():
-                    break
-
-            runs.append({
-                'session_id': session_id,
-                'timestamp': last_timestamp,
-                'model': model,
-                'user_message': user_text,
-                'assistant_response': final_response[:2000],
-                'api_calls': len(asst_indices),
-                'api_call_details': api_calls,
-                'input_tokens': total_input,
-                'output_tokens': total_output,
-                'cache_read': total_cache_read,
-                'cache_write': total_cache_write,
-                'total_tokens': total_tokens,
-                'cost_total': round(total_cost, 6),
-                'cost_input': 0,
-                'cost_output': 0,
-                'cost_cache_read': 0,
-                'cost_cache_write': 0,
-                'cache_pct': round(total_cache_read / max(total_tokens, 1) * 100, 1),
-            })
-            if len(runs) >= offset + limit:
-                break
-        if len(runs) >= offset + limit:
-            break
-
-    # Sort by timestamp descending
-    runs.sort(key=lambda x: x['timestamp'], reverse=True)
-    return runs[offset:offset + limit]
+    return runs
 
 
 @app.post("/api/refresh")

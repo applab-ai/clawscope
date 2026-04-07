@@ -21,6 +21,16 @@ import config
 def _sessions_dir():
     return config.get_sessions_dir()
 
+def _all_sessions_dirs():
+    """Return (agent_id, sessions_dir) tuples for all agents."""
+    base = config.get_agents_base()
+    dirs = []
+    for agent_sessions_dir in glob.glob(os.path.join(base, '*/sessions')):
+        if os.path.isdir(agent_sessions_dir):
+            agent_id = os.path.basename(os.path.dirname(agent_sessions_dir))
+            dirs.append((agent_id, agent_sessions_dir))
+    return dirs if dirs else [('main', _sessions_dir())]
+
 def _pricing():
     return config.get_pricing_table()
 
@@ -56,7 +66,7 @@ def extract_tool_names_from_content(content):
     return tool_names
 
 
-def process_session_file(file_path, session_id, user_category, db):
+def process_session_file(file_path, session_id, agent_id, user_category, db):
     """Process a single session JSONL file and extract prompt data."""
     
     # Check if we already processed this file completely
@@ -67,7 +77,12 @@ def process_session_file(file_path, session_id, user_category, db):
     file_size = os.path.getsize(file_path)
     
     if existing_session and existing_session.last_parsed_bytes == file_size:
-        # File hasn't changed, skip processing
+        # File hasn't changed, but backfill agent/category metadata if needed.
+        if existing_session.agent_id != agent_id or existing_session.user_category != user_category:
+            existing_session.agent_id = agent_id
+            existing_session.user_category = user_category
+            existing_session.updated_at = datetime.utcnow()
+            return 0, 0
         return 0, 0
     
     # Parse session file
@@ -224,6 +239,8 @@ def process_session_file(file_path, session_id, user_category, db):
     
     # UPSERT session
     if existing_session:
+        existing_session.agent_id = agent_id
+        existing_session.user_category = user_category
         existing_session.last_message_at = last_message_at
         existing_session.total_turns = len(turns)
         existing_session.total_api_calls = total_api_calls
@@ -235,6 +252,7 @@ def process_session_file(file_path, session_id, user_category, db):
     else:
         session = PromptSession(
             session_id=session_id,
+            agent_id=agent_id,
             user_category=user_category,
             started_at=session_started_at,
             last_message_at=last_message_at,
@@ -361,15 +379,19 @@ def main():
     db = next(get_db())
     
     try:
-        # Include both active .jsonl and archived .jsonl.reset.* files
-        jsonl_files = glob.glob(os.path.join(_sessions_dir(), "*.jsonl"))
-        jsonl_files += glob.glob(os.path.join(_sessions_dir(), "*.jsonl.reset.*"))
-        print(f"Processing {len(jsonl_files)} session files...")
+        session_dirs = _all_sessions_dirs()
+        jsonl_files = []
+        for agent_id, sessions_dir in session_dirs:
+            for file_path in glob.glob(os.path.join(sessions_dir, "*.jsonl")):
+                jsonl_files.append((agent_id, file_path))
+            for file_path in glob.glob(os.path.join(sessions_dir, "*.jsonl.reset.*")):
+                jsonl_files.append((agent_id, file_path))
+        print(f"Processing {len(jsonl_files)} session files across {len(session_dirs)} agents...")
         
         total_turns = 0
         total_calls = 0
         
-        for file_path in jsonl_files:
+        for agent_id, file_path in jsonl_files:
             # Extract session ID: handle both 'uuid.jsonl' and 'uuid.jsonl.reset.timestamp'
             basename = os.path.basename(file_path)
             session_id = basename.split('.jsonl')[0]
@@ -378,12 +400,12 @@ def main():
             CATEGORY_NORMALIZE = {'cron': 'crons', 'subagent': 'subagents', 'unknown': 'subagents'}
             mapped_category = CATEGORY_NORMALIZE.get(raw_category, raw_category)
             
-            turns_added, calls_added = process_session_file(file_path, session_id, mapped_category, db)
+            turns_added, calls_added = process_session_file(file_path, session_id, agent_id, mapped_category, db)
             total_turns += turns_added
             total_calls += calls_added
             
             if turns_added > 0 or calls_added > 0:
-                print(f"  {session_id} ({mapped_category}): +{turns_added} turns, +{calls_added} calls")
+                print(f"  {agent_id}/{session_id} ({mapped_category}): +{turns_added} turns, +{calls_added} calls")
         
         db.commit()
         print(f"Completed: {total_turns} turns, {total_calls} API calls added")

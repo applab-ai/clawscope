@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, Boolean, Text, UniqueConstraint
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, Boolean, Text, UniqueConstraint, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
@@ -82,9 +82,10 @@ class PromptSession(Base):
     __tablename__ = "prompt_sessions"
     id = Column(Integer, primary_key=True)
     session_id = Column(String, unique=True, index=True)  # UUID aus JSONL
+    agent_id = Column(String, index=True)  # main/worker/gclight/etc.
     user_category = Column(String, index=True)  # user/admin/cron/subagent
     started_at = Column(DateTime, index=True)
-    last_message_at = Column(DateTime)
+    last_message_at = Column(DateTime, index=True)
     total_turns = Column(Integer, default=0)
     total_api_calls = Column(Integer, default=0)
     total_tokens = Column(Integer, default=0)
@@ -165,9 +166,46 @@ class CronRun(Base):
         UniqueConstraint('job_id', 'run_at', name='unique_cron_run'),
     )
 
+def _ensure_schema_updates():
+    """Best-effort lightweight migrations for existing installs."""
+    with engine.begin() as conn:
+        try:
+            cols = {row[1] for row in conn.execute(text("PRAGMA table_info(prompt_sessions)"))}
+            if 'agent_id' not in cols:
+                conn.execute(text("ALTER TABLE prompt_sessions ADD COLUMN agent_id VARCHAR"))
+        except Exception:
+            pass
+
+        indexes = {row[1] for row in conn.execute(text("PRAGMA index_list(prompt_sessions)"))}
+        if 'ix_prompt_sessions_agent_id' not in indexes:
+            try:
+                conn.execute(text("CREATE INDEX ix_prompt_sessions_agent_id ON prompt_sessions (agent_id)"))
+            except Exception:
+                pass
+        if 'ix_prompt_sessions_last_message_at' not in indexes:
+            try:
+                conn.execute(text("CREATE INDEX ix_prompt_sessions_last_message_at ON prompt_sessions (last_message_at)"))
+            except Exception:
+                pass
+
+        turn_indexes = {row[1] for row in conn.execute(text("PRAGMA index_list(prompt_turns)"))}
+        if 'ix_prompt_turns_session_id_started_at' not in turn_indexes:
+            try:
+                conn.execute(text("CREATE INDEX ix_prompt_turns_session_id_started_at ON prompt_turns (session_id, started_at DESC)"))
+            except Exception:
+                pass
+
+        call_indexes = {row[1] for row in conn.execute(text("PRAGMA index_list(prompt_api_calls)"))}
+        if 'ix_prompt_api_calls_session_turn_call' not in call_indexes:
+            try:
+                conn.execute(text("CREATE INDEX ix_prompt_api_calls_session_turn_call ON prompt_api_calls (session_id, turn_index, call_index)"))
+            except Exception:
+                pass
+
 # Create tables
 def create_tables():
     Base.metadata.create_all(bind=engine)
+    _ensure_schema_updates()
 
 # Dependency
 def get_db():
