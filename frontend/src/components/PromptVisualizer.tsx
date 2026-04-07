@@ -524,6 +524,7 @@ export const PromptVisualizer: React.FC = () => {
   const [listViewportHeight, setListViewportHeight] = useState(600);
   const [rowHeights, setRowHeights] = useState<Record<string, number>>({});
   const listContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const rowRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
   const realLoadingRef = React.useRef(false);
 
   const AGENTS = [
@@ -602,6 +603,13 @@ export const PromptVisualizer: React.FC = () => {
       if (res.ok) {
         const data: RealPromptRunDetail = await res.json();
         setRealRunDetails(prev => ({ ...prev, [key]: data }));
+        requestAnimationFrame(() => {
+          const el = rowRefs.current[key];
+          if (el) {
+            const nextHeight = Math.ceil(el.getBoundingClientRect().height);
+            setRowHeights(prev => prev[key] === nextHeight ? prev : { ...prev, [key]: nextHeight });
+          }
+        });
       }
     } catch (_) { /* ignore */ }
     setDetailLoading(prev => ({ ...prev, [key]: false }));
@@ -660,6 +668,7 @@ export const PromptVisualizer: React.FC = () => {
   const visibleRuns = realRuns.slice(startIndex, endIndex);
 
   const measureRow = (key: string, el: HTMLDivElement | null) => {
+    rowRefs.current[key] = el;
     if (!el) return;
     const nextHeight = Math.ceil(el.getBoundingClientRect().height);
     setRowHeights(prev => prev[key] === nextHeight ? prev : { ...prev, [key]: nextHeight });
@@ -844,10 +853,25 @@ export const PromptVisualizer: React.FC = () => {
               const toggleExpand = () => {
                 setExpandedRuns(prev => {
                   const next = new Set(prev);
-                  if (next.has(runKey)) next.delete(runKey); else next.add(runKey);
+                  if (next.has(runKey)) {
+                    next.delete(runKey);
+                    setRowHeights(heights => ({ ...heights, [runKey]: 88 }));
+                  } else {
+                    next.add(runKey);
+                    setRowHeights(heights => ({ ...heights, [runKey]: Math.max(heights[runKey] || 0, 520) }));
+                  }
                   return next;
                 });
-                if (!expanded) loadRealRunDetail(run);
+                if (!expanded) {
+                  loadRealRunDetail(run);
+                  requestAnimationFrame(() => {
+                    const el = rowRefs.current[runKey];
+                    if (el) {
+                      const nextHeight = Math.ceil(el.getBoundingClientRect().height);
+                      setRowHeights(prev => prev[runKey] === nextHeight ? prev : { ...prev, [runKey]: nextHeight });
+                    }
+                  });
+                }
               };
               return (
                 <div
