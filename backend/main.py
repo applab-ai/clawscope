@@ -2271,9 +2271,10 @@ async def get_version(user=Depends(check_session)):
     """Return local version and check GitHub for updates."""
     result = {"local": CLAWSCOPE_VERSION, "remote": None, "update_available": False}
     try:
+        # Use GitHub API (60s cache) instead of raw.githubusercontent (5min cache)
         req = urllib.request.Request(
-            "https://raw.githubusercontent.com/applab-ai/clawscope/main/backend/main.py",
-            headers={"User-Agent": "Clawscope"}
+            "https://api.github.com/repos/applab-ai/clawscope/contents/backend/main.py?ref=main",
+            headers={"User-Agent": "Clawscope", "Accept": "application/vnd.github.raw+json"}
         )
         with urllib.request.urlopen(req, timeout=5) as resp:
             for line in resp.read().decode().splitlines():
