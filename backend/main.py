@@ -801,6 +801,58 @@ async def get_system_prompt(agent: str = "main", user=Depends(check_session)):
     skills_xml = '\n'.join(skills_xml_lines)
     skills_chars = len(skills_xml)
 
+    # --- Plugins / compression behavior ---
+    plugins_info = []
+    compression_info = {
+        'active': False,
+        'plugin_slot': None,
+        'db_path': None,
+        'threshold': None,
+        'summarizer_model': None,
+        'effect_on_context': 'Standard prompt assembly without additional compression metadata detected.',
+    }
+    try:
+        audit = _sp.run(['openclaw', 'security', 'audit', '--json'], capture_output=True, text=True, timeout=20)
+        audit_json = _json.loads(audit.stdout or '{}')
+        findings = audit_json.get('findings', []) or []
+
+        enabled_plugins = []
+        extension_count = 0
+        for finding in findings:
+            check_id = finding.get('checkId', '')
+            detail = finding.get('detail', '') or ''
+            if check_id == 'plugins.extensions_no_allowlist':
+                m = _re.search(r'Found (\d+) extension\(s\)', detail)
+                if m:
+                    extension_count = int(m.group(1))
+            if check_id == 'plugins.tools_reachable_permissive_policy':
+                m = _re.search(r'Enabled extension plugins:\s*([^\n]+)', detail)
+                if m:
+                    enabled_plugins = [p.strip() for p in m.group(1).split(',') if p.strip()]
+
+        for name in enabled_plugins:
+            plugins_info.append({
+                'name': name,
+                'type': 'extension',
+                'enabled': True,
+                'effect_on_prompt': 'Can change runtime behavior, tool surface, retrieval, or compression handling beyond plain workspace + skill assembly.',
+            })
+
+        stderr = audit.stderr or ''
+        lcm_loaded = _re.search(r'\[plugins\] \[lcm\] Plugin loaded \(enabled=(true|false), db=([^,]+), threshold=([^\)]+)\)', stderr)
+        lcm_model = _re.search(r'\[plugins\] \[lcm\] Compaction summarization model:\s*(.+)', stderr)
+        if lcm_loaded:
+            compression_info.update({
+                'active': lcm_loaded.group(1) == 'true',
+                'plugin_slot': 'lcm',
+                'db_path': lcm_loaded.group(2).strip(),
+                'threshold': lcm_loaded.group(3).strip(),
+                'summarizer_model': lcm_model.group(1).strip() if lcm_model else None,
+                'effect_on_context': 'Older context can be compacted into searchable summaries. Recall may expand from compressed memory instead of always sending raw prior turns directly.',
+            })
+    except Exception:
+        pass
+
     # --- Runtime prompt sections (these are injected by OpenClaw at API call time) ---
     runtime_sections = [
         'Tool availability & policies',
@@ -809,6 +861,7 @@ async def get_system_prompt(agent: str = "main", user=Depends(check_session)):
         'Model aliases',
         'Memory recall instructions',
         'LCM (Lossless Context Management) recall protocol',
+        'Plugins / extension runtime behavior',
         'Reply tags',
         'Messaging routing',
         'Group chat context',
@@ -831,6 +884,9 @@ async def get_system_prompt(agent: str = "main", user=Depends(check_session)):
         'skills_chars': skills_chars,
         'skills_xml': skills_xml,
         'runtime_sections': runtime_sections,
+        'plugins': plugins_info,
+        'extensions_count': extension_count,
+        'compression': compression_info,
         'total_chars': total_chars,
         'total_tokens_est': total_chars // 4,
         'file_count': len([f for f in files if f.get('type') != 'missing']),

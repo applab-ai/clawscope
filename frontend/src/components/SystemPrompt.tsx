@@ -25,6 +25,8 @@ import {
   IconPuzzle,
   IconBolt,
   IconShieldCheck,
+  IconPlug,
+  IconArchive,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 
@@ -44,6 +46,22 @@ interface SkillInfo {
   description: string;
 }
 
+interface PluginInfo {
+  name: string;
+  type: string;
+  enabled: boolean;
+  effect_on_prompt: string;
+}
+
+interface CompressionInfo {
+  active: boolean;
+  plugin_slot?: string | null;
+  db_path?: string | null;
+  threshold?: string | null;
+  summarizer_model?: string | null;
+  effect_on_context: string;
+}
+
 interface SystemPromptData {
   agent: string;
   workspace: string;
@@ -56,6 +74,9 @@ interface SystemPromptData {
   openclaw_config: Record<string, any>;
   openclaw_config_chars: number;
   runtime_sections: string[];
+  plugins?: PluginInfo[];
+  extensions_count?: number;
+  compression?: CompressionInfo;
   total_chars: number;
   total_tokens_est: number;
   file_count: number;
@@ -119,6 +140,9 @@ export const SystemPrompt: React.FC = () => {
     { label: t('systemPrompt.sections.skills', 'Skills XML Block'), chars: data.skills_chars, color: 'violet' },
     { label: t('systemPrompt.sections.runtime', 'Runtime Directives'), chars: Math.round(data.total_chars - workspaceChars - data.skills_chars), color: 'teal' },
   ];
+
+  const plugins = data.plugins || [];
+  const compression = data.compression;
 
   return (
     <Stack gap="lg">
@@ -290,6 +314,70 @@ export const SystemPrompt: React.FC = () => {
           </List>
         </Card>
       )}
+
+      {/* 4. Plugins / Compression */}
+      <Card withBorder>
+        <Group gap="sm" mb="md">
+          <ThemeIcon color="orange" variant="light" size="sm"><IconPlug size={14} /></ThemeIcon>
+          <Title order={4}>{t('systemPrompt.sections.plugins', 'Plugins & Compression')}</Title>
+          <Badge variant="light" size="sm">{plugins.length} active extension{plugins.length === 1 ? '' : 's'}</Badge>
+        </Group>
+        <Text size="sm" c="dimmed" mb="md">
+          {t('systemPrompt.sections.pluginsDesc', 'Extensions and compression plugins can change how context is stored, recalled, or exposed to the runtime. This explains why compressed sessions may behave differently from raw chat history.')}
+        </Text>
+
+        {plugins.length > 0 ? (
+          <Stack gap="sm" mb="md">
+            {plugins.map((plugin) => (
+              <Paper key={plugin.name} withBorder p="md" radius="md">
+                <Group justify="space-between" mb={6}>
+                  <Group gap="sm">
+                    <Text fw={600}>{plugin.name}</Text>
+                    <Badge variant="outline" size="xs" color={plugin.enabled ? 'green' : 'gray'}>
+                      {plugin.enabled ? 'enabled' : 'disabled'}
+                    </Badge>
+                    <Badge variant="light" size="xs" color="orange">{plugin.type}</Badge>
+                  </Group>
+                </Group>
+                <Text size="sm" c="dimmed">{plugin.effect_on_prompt}</Text>
+              </Paper>
+            ))}
+          </Stack>
+        ) : (
+          <Text size="sm" c="dimmed" mb="md">{t('systemPrompt.sections.noPlugins', 'No active extension plugins detected.')}</Text>
+        )}
+
+        {compression && (
+          <Paper withBorder p="md" radius="md" bg="var(--mantine-color-dark-6)">
+            <Group gap="sm" mb="sm">
+              <ThemeIcon color="grape" variant="light" size="sm"><IconArchive size={14} /></ThemeIcon>
+              <Text fw={600}>{t('systemPrompt.sections.compression', 'Compression / LCM')}</Text>
+              <Badge variant="light" size="xs" color={compression.active ? 'green' : 'gray'}>
+                {compression.active ? 'active' : 'inactive'}
+              </Badge>
+            </Group>
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="sm">
+              <div>
+                <Text size="xs" c="dimmed">Plugin slot</Text>
+                <Code>{compression.plugin_slot || '—'}</Code>
+              </div>
+              <div>
+                <Text size="xs" c="dimmed">Threshold</Text>
+                <Code>{compression.threshold || '—'}</Code>
+              </div>
+              <div>
+                <Text size="xs" c="dimmed">Summarizer model</Text>
+                <Code>{compression.summarizer_model || '—'}</Code>
+              </div>
+              <div>
+                <Text size="xs" c="dimmed">DB</Text>
+                <Code>{compression.db_path || '—'}</Code>
+              </div>
+            </SimpleGrid>
+            <Text size="sm" c="dimmed">{compression.effect_on_context}</Text>
+          </Paper>
+        )}
+      </Card>
     </Stack>
   );
 };
