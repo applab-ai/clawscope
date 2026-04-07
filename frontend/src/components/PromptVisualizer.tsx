@@ -36,7 +36,6 @@ import {
   IconX,
   IconSparkles,
   IconArrowDown,
-  IconDatabaseImport,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 
@@ -480,12 +479,11 @@ interface ApiCallDetail {
 
 interface RealPromptRun {
   session_id: string;
+  turn_index: number;
   timestamp: string;
   model: string;
   user_message: string;
-  assistant_response: string;
   api_calls: number;
-  api_call_details: ApiCallDetail[];
   input_tokens: number;
   output_tokens: number;
   cache_read: number;
@@ -497,6 +495,13 @@ interface RealPromptRun {
   cost_cache_read: number;
   cost_cache_write: number;
   cache_pct: number;
+}
+
+interface RealPromptRunDetail {
+  session_id: string;
+  turn_index: number;
+  assistant_response: string;
+  api_call_details: ApiCallDetail[];
 }
 
 /* ---- Main PromptVisualizer component ---- */
@@ -511,9 +516,12 @@ export const PromptVisualizer: React.FC = () => {
   const [realRuns, setRealRuns] = useState<RealPromptRun[]>([]);
   const [realLoading, setRealLoading] = useState(false);
   const [showReal, setShowReal] = useState(false);
-  const [expandedRuns, setExpandedRuns] = useState<Set<number>>(new Set());
+  const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set());
+  const [realRunDetails, setRealRunDetails] = useState<Record<string, RealPromptRunDetail>>({});
+  const [detailLoading, setDetailLoading] = useState<Record<string, boolean>>({});
   const [hasMore, setHasMore] = useState(true);
   const loadMoreRef = React.useRef<HTMLDivElement | null>(null);
+  const realLoadingRef = React.useRef(false);
 
   const AGENTS = [
     { value: 'main', label: 'Main' },
@@ -557,12 +565,15 @@ export const PromptVisualizer: React.FC = () => {
     : 0;
 
   const PAGE_SIZE = 20;
+  const getRunKey = (run: Pick<RealPromptRun, 'session_id' | 'turn_index'>) => `${run.session_id}:${run.turn_index}`;
 
   const loadRealRuns = async (agentOverride?: string, append = false) => {
+    if (realLoadingRef.current) return;
     const a = agentOverride ?? agent;
     const currentOffset = append ? realRuns.length : 0;
     setShowReal(true);
     setRealLoading(true);
+    realLoadingRef.current = true;
     try {
       const res = await fetch(`/api/real-prompts?limit=${PAGE_SIZE}&offset=${currentOffset}&agent=${encodeURIComponent(a)}`, { credentials: 'include' });
       if (res.ok) {
@@ -576,12 +587,29 @@ export const PromptVisualizer: React.FC = () => {
       }
     } catch (_) { /* ignore */ }
     setRealLoading(false);
+    realLoadingRef.current = false;
+  };
+
+  const loadRealRunDetail = async (run: RealPromptRun) => {
+    const key = getRunKey(run);
+    if (realRunDetails[key] || detailLoading[key]) return;
+    setDetailLoading(prev => ({ ...prev, [key]: true }));
+    try {
+      const res = await fetch(`/api/real-prompts/${encodeURIComponent(run.session_id)}/${run.turn_index}`, { credentials: 'include' });
+      if (res.ok) {
+        const data: RealPromptRunDetail = await res.json();
+        setRealRunDetails(prev => ({ ...prev, [key]: data }));
+      }
+    } catch (_) { /* ignore */ }
+    setDetailLoading(prev => ({ ...prev, [key]: false }));
   };
 
   // Auto-load on mount and when agent changes
   React.useEffect(() => {
     setHasMore(true);
     setExpandedRuns(new Set());
+    setRealRunDetails({});
+    setDetailLoading({});
     loadRealRuns(agent);
   }, [agent]);
 
@@ -749,7 +777,7 @@ export const PromptVisualizer: React.FC = () => {
             variant="light"
             color="violet"
             size="xs"
-            onClick={loadRealRuns}
+            onClick={() => loadRealRuns()}
             loading={realLoading}
           >
             {showReal ? t('visualizer.refresh', 'Refresh') : t('visualizer.loadRuns', 'Load')}
@@ -758,15 +786,20 @@ export const PromptVisualizer: React.FC = () => {
 
         {showReal && realRuns.length > 0 && (
           <Stack gap="xs">
-            {realRuns.map((run, i) => {
-              const expanded = expandedRuns.has(i);
-              const toggleExpand = () => setExpandedRuns(prev => {
-                const next = new Set(prev);
-                if (next.has(i)) next.delete(i); else next.add(i);
-                return next;
-              });
+            {realRuns.map((run) => {
+              const runKey = getRunKey(run);
+              const expanded = expandedRuns.has(runKey);
+              const detail = realRunDetails[runKey];
+              const toggleExpand = () => {
+                setExpandedRuns(prev => {
+                  const next = new Set(prev);
+                  if (next.has(runKey)) next.delete(runKey); else next.add(runKey);
+                  return next;
+                });
+                if (!expanded) loadRealRunDetail(run);
+              };
               return (
-                <Card key={i} withBorder p="sm" style={{ cursor: 'pointer' }} onClick={toggleExpand}>
+                <Card key={runKey} withBorder p="sm" style={{ cursor: 'pointer' }} onClick={toggleExpand}>
                   {/* Row 1: timestamp left, cost right */}
                   <Group justify="space-between" wrap="nowrap">
                     <Text size="sm" c="dimmed" style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -792,7 +825,7 @@ export const PromptVisualizer: React.FC = () => {
 
 
                   <Collapse expanded={expanded}>
-                    <Stack gap="xs" mt="xs" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                    {expanded && <Stack gap="xs" mt="xs" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                       {/* Token breakdown */}
                       <Group gap="xs" wrap="wrap">
                         <Badge size="xs" variant="outline" color="gray">In: {run.input_tokens.toLocaleString()}</Badge>
@@ -837,7 +870,7 @@ export const PromptVisualizer: React.FC = () => {
                         <Text size="xs" fw={600} mb={4}>{t('visualizer.answer')}</Text>
                         <Paper p="xs" bg="var(--mantine-color-dark-7)" style={{ borderRadius: 4, maxHeight: 400, overflow: 'auto' }}>
                           <Text size="xs" style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', color: 'var(--mantine-color-green-4)' }}>
-                            {run.assistant_response || '—'}
+                            {detailLoading[runKey] ? 'Loading…' : (detail?.assistant_response || '—')}
                           </Text>
                         </Paper>
                       </div>
@@ -845,11 +878,11 @@ export const PromptVisualizer: React.FC = () => {
 
 
                       {/* API call breakdown */}
-                      {run.api_calls > 1 && run.api_call_details && (
+                      {run.api_calls > 1 && detail?.api_call_details && (
                         <div>
                           <Text size="xs" fw={600} mb={4}>🔄 {run.api_calls} API-Calls in diesem Turn:</Text>
                           <Stack gap={4}>
-                            {run.api_call_details.map((call, ci) => (
+                            {detail.api_call_details.map((call, ci) => (
                               <Paper key={ci} p="xs" bg="var(--mantine-color-dark-8)" style={{ borderRadius: 4, borderLeft: '3px solid var(--mantine-color-violet-6)' }}>
                                 <Group gap="xs" wrap="wrap">
                                   <Text size="xs" c="dimmed">#{ci + 1}</Text>
@@ -867,7 +900,7 @@ export const PromptVisualizer: React.FC = () => {
                           </Stack>
                         </div>
                       )}
-                    </Stack>
+                    </Stack>}
                   </Collapse>
                 </Card>
               );

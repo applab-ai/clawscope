@@ -1662,34 +1662,36 @@ async def get_real_prompts(
     if not turns:
         return []
 
-    turn_keys = [(turn.session_id, turn.turn_index) for turn, _session in turns]
     session_ids = sorted({turn.session_id for turn, _session in turns})
 
-    calls = (
-        db.query(PromptApiCall)
-        .filter(PromptApiCall.session_id.in_(session_ids))
-        .order_by(PromptApiCall.session_id, PromptApiCall.turn_index, PromptApiCall.call_index)
-        .all()
-    )
-
-    calls_by_turn = {}
-    for call in calls:
-        key = (call.session_id, call.turn_index)
-        calls_by_turn.setdefault(key, []).append(call)
+    call_summaries = {
+        (row[0], row[1]): {
+            'call_count': row[2],
+            'cost_input': row[3] or 0,
+            'cost_output': row[4] or 0,
+            'cost_cache_read': row[5] or 0,
+            'cost_cache_write': row[6] or 0,
+        }
+        for row in (
+            db.query(
+                PromptApiCall.session_id,
+                PromptApiCall.turn_index,
+                func.count(PromptApiCall.id),
+                func.sum(PromptApiCall.cost_input),
+                func.sum(PromptApiCall.cost_output),
+                func.sum(PromptApiCall.cost_cache_read),
+                func.sum(PromptApiCall.cost_cache_write),
+            )
+            .filter(PromptApiCall.session_id.in_(session_ids))
+            .group_by(PromptApiCall.session_id, PromptApiCall.turn_index)
+            .all()
+        )
+    }
 
     runs = []
     for turn, session in turns:
         key = (turn.session_id, turn.turn_index)
-        turn_calls = calls_by_turn.get(key, [])
-        api_call_details = [
-            {
-                'tokens': (call.tokens_input or 0) + (call.tokens_output or 0) + (call.tokens_cache_read or 0) + (call.tokens_cache_write or 0),
-                'output': call.tokens_output or 0,
-                'cost': round(call.cost_total or 0, 6),
-                'response_preview': (call.content_preview or '')[:500],
-            }
-            for call in turn_calls
-        ]
+        turn_summary = call_summaries.get(key, {})
 
         total_tokens = (
             (turn.total_tokens_input or 0)
@@ -1700,26 +1702,60 @@ async def get_real_prompts(
 
         runs.append({
             'session_id': turn.session_id,
+            'turn_index': turn.turn_index,
             'timestamp': turn.started_at.isoformat() if turn.started_at else None,
             'model': turn.model or session.primary_model or 'unknown',
             'user_message': turn.user_message or '',
-            'assistant_response': (turn.assistant_response or '')[:2000],
-            'api_calls': turn.api_calls or len(turn_calls),
-            'api_call_details': api_call_details,
+            'api_calls': turn.api_calls or turn_summary.get('call_count', 0),
             'input_tokens': turn.total_tokens_input or 0,
             'output_tokens': turn.total_tokens_output or 0,
             'cache_read': turn.total_tokens_cache_read or 0,
             'cache_write': turn.total_tokens_cache_write or 0,
             'total_tokens': total_tokens,
             'cost_total': round(turn.total_cost or 0, 6),
-            'cost_input': sum((call.cost_input or 0) for call in turn_calls),
-            'cost_output': sum((call.cost_output or 0) for call in turn_calls),
-            'cost_cache_read': sum((call.cost_cache_read or 0) for call in turn_calls),
-            'cost_cache_write': sum((call.cost_cache_write or 0) for call in turn_calls),
+            'cost_input': round(turn_summary.get('cost_input', 0), 6),
+            'cost_output': round(turn_summary.get('cost_output', 0), 6),
+            'cost_cache_read': round(turn_summary.get('cost_cache_read', 0), 6),
+            'cost_cache_write': round(turn_summary.get('cost_cache_write', 0), 6),
             'cache_pct': round(((turn.total_tokens_cache_read or 0) / max(total_tokens, 1)) * 100, 1),
         })
 
     return runs
+
+
+@app.get("/api/real-prompts/{session_id}/{turn_index}")
+async def get_real_prompt_detail(
+    session_id: str,
+    turn_index: int,
+    db: Session = Depends(get_db),
+    user=Depends(check_session)
+):
+    turn = db.query(PromptTurn).filter(
+        PromptTurn.session_id == session_id,
+        PromptTurn.turn_index == turn_index
+    ).first()
+    if not turn:
+        raise HTTPException(status_code=404, detail="Turn not found")
+
+    turn_calls = db.query(PromptApiCall).filter(
+        PromptApiCall.session_id == session_id,
+        PromptApiCall.turn_index == turn_index
+    ).order_by(PromptApiCall.call_index).all()
+
+    return {
+        'session_id': session_id,
+        'turn_index': turn_index,
+        'assistant_response': (turn.assistant_response or '')[:2000],
+        'api_call_details': [
+            {
+                'tokens': (call.tokens_input or 0) + (call.tokens_output or 0) + (call.tokens_cache_read or 0) + (call.tokens_cache_write or 0),
+                'output': call.tokens_output or 0,
+                'cost': round(call.cost_total or 0, 6),
+                'response_preview': (call.content_preview or '')[:500],
+            }
+            for call in turn_calls
+        ],
+    }
 
 
 @app.post("/api/refresh")
