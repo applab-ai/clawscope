@@ -11,6 +11,7 @@ import os
 import json
 import psutil
 import shutil
+import subprocess
 from typing import List, Dict, Optional
 
 from db import get_db, create_tables, CronJob, CronRun, ActiveSession, TokenUsage, PromptSession, PromptTurn, PromptApiCall
