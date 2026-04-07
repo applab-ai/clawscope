@@ -525,6 +525,7 @@ export const PromptVisualizer: React.FC = () => {
   const [rowHeights, setRowHeights] = useState<Record<string, number>>({});
   const listContainerRef = React.useRef<HTMLDivElement | null>(null);
   const rowRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
+  const rowObservers = React.useRef<Record<string, ResizeObserver>>({});
   const realLoadingRef = React.useRef(false);
 
   const AGENTS = [
@@ -638,6 +639,13 @@ export const PromptVisualizer: React.FC = () => {
     return () => observer.disconnect();
   }, [showReal, realRuns.length]);
 
+  React.useEffect(() => {
+    return () => {
+      Object.values(rowObservers.current).forEach((observer) => observer.disconnect());
+      rowObservers.current = {};
+    };
+  }, []);
+
   const OVERSCAN = 4;
   const FOOTER_HEIGHT = 44;
   const estimatedHeights = realRuns.map((run) => {
@@ -668,10 +676,26 @@ export const PromptVisualizer: React.FC = () => {
   const visibleRuns = realRuns.slice(startIndex, endIndex);
 
   const measureRow = (key: string, el: HTMLDivElement | null) => {
+    const prevEl = rowRefs.current[key];
+    if (prevEl === el && el) return;
+
+    if (rowObservers.current[key]) {
+      rowObservers.current[key].disconnect();
+      delete rowObservers.current[key];
+    }
+
     rowRefs.current[key] = el;
     if (!el) return;
-    const nextHeight = Math.ceil(el.getBoundingClientRect().height);
-    setRowHeights(prev => prev[key] === nextHeight ? prev : { ...prev, [key]: nextHeight });
+
+    const updateHeight = () => {
+      const nextHeight = Math.ceil(el.getBoundingClientRect().height);
+      setRowHeights(prev => prev[key] === nextHeight ? prev : { ...prev, [key]: nextHeight });
+    };
+
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(el);
+    rowObservers.current[key] = observer;
   };
 
   const handleListScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -855,7 +879,6 @@ export const PromptVisualizer: React.FC = () => {
                   const next = new Set(prev);
                   if (next.has(runKey)) {
                     next.delete(runKey);
-                    setRowHeights(heights => ({ ...heights, [runKey]: 88 }));
                   } else {
                     next.add(runKey);
                     setRowHeights(heights => ({ ...heights, [runKey]: Math.max(heights[runKey] || 0, 520) }));
@@ -864,13 +887,6 @@ export const PromptVisualizer: React.FC = () => {
                 });
                 if (!expanded) {
                   loadRealRunDetail(run);
-                  requestAnimationFrame(() => {
-                    const el = rowRefs.current[runKey];
-                    if (el) {
-                      const nextHeight = Math.ceil(el.getBoundingClientRect().height);
-                      setRowHeights(prev => prev[runKey] === nextHeight ? prev : { ...prev, [runKey]: nextHeight });
-                    }
-                  });
                 }
               };
               return (
