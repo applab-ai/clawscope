@@ -651,16 +651,14 @@ async def get_cron_history(
         "hasMore": offset + limit < total,
     }
 
-@app.get("/api/system-prompt")
-async def get_system_prompt(agent: str = "main", user=Depends(check_session)):
-    """Get the workspace files that form the system prompt for an agent."""
+SYSTEM_PROMPT_CACHE = {}
+SYSTEM_PROMPT_CACHE_TTL = 30
+
+
+def _resolve_agent_workspace(agent: str):
     import json as _json
-    
-    # Resolve workspace path for agent
-    # Dynamically resolve agent workspace from agents_base
     agents_base = config.get_agents_base()
     agent_dir = os.path.join(agents_base, agent)
-    # Try reading workspace from agent config, fallback to default
     workspace = os.path.expanduser('~/.openclaw/workspace')
     agent_config_path = os.path.join(agent_dir, 'agent', 'agent.json')
     if os.path.exists(agent_config_path):
@@ -671,74 +669,67 @@ async def get_system_prompt(agent: str = "main", user=Depends(check_session)):
                     workspace = os.path.expanduser(ac['workspace'])
         except Exception:
             pass
-    
-    # Files that OpenClaw injects into the system prompt (exact order from source)
+    return workspace
+
+
+def _build_system_prompt_data(agent: str):
+    import json as _json
+    import subprocess as _sp
+    import re as _re
+    import time as _time
+
+    cache_key = f'system_prompt:{agent}'
+    cached = SYSTEM_PROMPT_CACHE.get(cache_key)
+    if cached and (_time.time() - cached['ts'] < SYSTEM_PROMPT_CACHE_TTL):
+        return cached['data']
+
+    workspace = _resolve_agent_workspace(agent)
     boot_files = [
         'AGENTS.md', 'SOUL.md', 'TOOLS.md', 'IDENTITY.md', 'USER.md',
         'HEARTBEAT.md', 'BOOTSTRAP.md', 'MEMORY.md',
     ]
-    # Additional files loaded by agent on startup (not auto-injected)
     extra_files = ['CONTEXT.md', 'BOOT.md']
-    
+
     files = []
     total_chars = 0
-    for fname in boot_files:
+    file_contents = {}
+
+    def add_file(fname: str, file_type: str):
+        nonlocal total_chars
         fpath = os.path.join(workspace, fname)
         if os.path.exists(fpath):
             try:
                 with open(fpath, 'r') as f:
                     content = f.read()
+                file_contents[fname] = content
                 files.append({
                     'name': fname,
                     'path': fpath,
                     'size': len(content),
                     'tokens_est': len(content) // 4,
-                    'content': content,
-                    'type': 'injected',
+                    'content_loaded': False,
+                    'type': file_type,
                 })
                 total_chars += len(content)
             except Exception:
-                files.append({'name': fname, 'path': fpath, 'size': 0, 'tokens_est': 0, 'content': '[read error]', 'type': 'injected'})
+                files.append({'name': fname, 'path': fpath, 'size': 0, 'tokens_est': 0, 'content_loaded': False, 'type': file_type})
         else:
-            files.append({'name': fname, 'path': fpath, 'size': 0, 'tokens_est': 0, 'content': '', 'type': 'missing'})
-    
-    # Extra files (loaded by agent, not auto-injected)
+            files.append({'name': fname, 'path': fpath, 'size': 0, 'tokens_est': 0, 'content_loaded': False, 'type': 'missing'})
+
+    for fname in boot_files:
+        add_file(fname, 'injected')
     for fname in extra_files:
-        fpath = os.path.join(workspace, fname)
-        if os.path.exists(fpath):
-            try:
-                with open(fpath, 'r') as f:
-                    content = f.read()
-                files.append({
-                    'name': fname,
-                    'path': fpath,
-                    'size': len(content),
-                    'tokens_est': len(content) // 4,
-                    'content': content,
-                    'type': 'agent-loaded',
-                })
-                total_chars += len(content)
-            except Exception:
-                pass
-    
-    # --- Skills (as injected into prompt) ---
-    # Use `openclaw skills` CLI to get the actual runtime skill list.
-    # This is the single source of truth — OpenClaw applies gating (binary probing,
-    # env checks, OS filters, config enabled/disabled) internally.
-    import subprocess as _sp
-    import re as _re
+        add_file(fname, 'agent-loaded')
 
     skills = []
     skills_total = 0
+    extension_count = 0
     try:
         result = _sp.run(['openclaw', 'skills'], capture_output=True, text=True, timeout=15)
         output = result.stdout or ''
-        # Parse header line like "Skills (12/54 ready)"
         header_match = _re.search(r'Skills \((\d+)/(\d+) ready\)', output)
         if header_match:
             skills_total = int(header_match.group(2))
-        # Parse table rows: Status | Emoji+Name | Description | Source
-        # Ready skills have "✓ ready" in status column
         current_skill = None
         for line in output.split('\n'):
             if '│' not in line:
@@ -750,9 +741,7 @@ async def get_system_prompt(agent: str = "main", user=Depends(check_session)):
             name_col = cols[2]
             desc_col = cols[3]
             source_col = cols[4]
-            # Detect if this is a new skill row (has status) or continuation
             if '✓ ready' in status_col or '△ needs setup' in status_col:
-                # Strip emoji from name
                 clean_name = _re.sub(r'[^\w\-]', '', name_col.encode('ascii', 'ignore').decode()).strip().strip('-')
                 is_ready = '✓ ready' in status_col
                 source = 'builtin'
@@ -769,13 +758,10 @@ async def get_system_prompt(agent: str = "main", user=Depends(check_session)):
                 if is_ready:
                     skills.append(current_skill)
             elif current_skill and desc_col:
-                # Continuation line — append to description
                 current_skill['description'] += ' ' + desc_col
     except Exception as e:
-        # Fallback: return empty with error note
         skills = [{'name': 'error', 'source': 'unknown', 'status': 'error', 'description': f'Failed to run openclaw skills: {e}'}]
 
-    # Also resolve SKILL.md locations for the ready skills
     skill_search_dirs = [
         os.path.join(workspace, 'skills'),
         os.path.expanduser('~/.openclaw/skills'),
@@ -789,7 +775,6 @@ async def get_system_prompt(agent: str = "main", user=Depends(check_session)):
                 sk['location'] = candidate
                 break
 
-    # Build the actual XML block that gets injected into every prompt
     skills_xml_lines = ['<available_skills>']
     for sk in skills:
         skills_xml_lines.append('  <skill>')
@@ -801,7 +786,6 @@ async def get_system_prompt(agent: str = "main", user=Depends(check_session)):
     skills_xml = '\n'.join(skills_xml_lines)
     skills_chars = len(skills_xml)
 
-    # --- Plugins / compression behavior ---
     plugins_info = []
     compression_info = {
         'active': False,
@@ -817,7 +801,6 @@ async def get_system_prompt(agent: str = "main", user=Depends(check_session)):
         findings = audit_json.get('findings', []) or []
 
         enabled_plugins = []
-        extension_count = 0
         for finding in findings:
             check_id = finding.get('checkId', '')
             detail = finding.get('detail', '') or ''
@@ -853,7 +836,6 @@ async def get_system_prompt(agent: str = "main", user=Depends(check_session)):
     except Exception:
         pass
 
-    # --- Runtime prompt sections (these are injected by OpenClaw at API call time) ---
     runtime_sections = [
         'Tool availability & policies',
         'Safety rules',
@@ -874,7 +856,7 @@ async def get_system_prompt(agent: str = "main", user=Depends(check_session)):
 
     total_chars += skills_chars
 
-    return {
+    data = {
         'agent': agent,
         'workspace': workspace,
         'files': files,
@@ -882,7 +864,6 @@ async def get_system_prompt(agent: str = "main", user=Depends(check_session)):
         'skills_count': len(skills),
         'skills_total': skills_total,
         'skills_chars': skills_chars,
-        'skills_xml': skills_xml,
         'runtime_sections': runtime_sections,
         'plugins': plugins_info,
         'extensions_count': extension_count,
@@ -890,7 +871,36 @@ async def get_system_prompt(agent: str = "main", user=Depends(check_session)):
         'total_chars': total_chars,
         'total_tokens_est': total_chars // 4,
         'file_count': len([f for f in files if f.get('type') != 'missing']),
+        '_file_contents': file_contents,
+        '_skills_xml': skills_xml,
     }
+    SYSTEM_PROMPT_CACHE[cache_key] = {'ts': _time.time(), 'data': data}
+    return data
+
+
+@app.get("/api/system-prompt")
+async def get_system_prompt(agent: str = "main", user=Depends(check_session)):
+    data = _build_system_prompt_data(agent)
+    response = dict(data)
+    response.pop('_file_contents', None)
+    response.pop('_skills_xml', None)
+    response['skills_xml_loaded'] = False
+    return response
+
+
+@app.get("/api/system-prompt/file")
+async def get_system_prompt_file(agent: str = "main", name: str = "", user=Depends(check_session)):
+    data = _build_system_prompt_data(agent)
+    content = data.get('_file_contents', {}).get(name)
+    if content is None:
+        raise HTTPException(status_code=404, detail='File not found')
+    return {'agent': agent, 'name': name, 'content': content}
+
+
+@app.get("/api/system-prompt/skills-xml")
+async def get_system_prompt_skills_xml(agent: str = "main", user=Depends(check_session)):
+    data = _build_system_prompt_data(agent)
+    return {'agent': agent, 'skills_xml': data.get('_skills_xml', '')}
 
 @app.get("/api/models")
 async def get_models(user=Depends(check_session)):

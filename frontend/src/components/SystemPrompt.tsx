@@ -35,7 +35,7 @@ interface PromptFile {
   path: string;
   size: number;
   tokens_est: number;
-  content: string;
+  content_loaded?: boolean;
   type: 'injected' | 'agent-loaded' | 'missing';
 }
 
@@ -70,7 +70,8 @@ interface SystemPromptData {
   skills_count: number;
   skills_total: number;
   skills_chars: number;
-  skills_xml: string;
+  skills_xml?: string;
+  skills_xml_loaded?: boolean;
   openclaw_config: Record<string, any>;
   openclaw_config_chars: number;
   runtime_sections: string[];
@@ -87,6 +88,10 @@ export const SystemPrompt: React.FC = () => {
   const [data, setData] = useState<SystemPromptData | null>(null);
   const [loading, setLoading] = useState(true);
   const [agent, setAgent] = useState('main');
+  const [fileContents, setFileContents] = useState<Record<string, string>>({});
+  const [fileLoading, setFileLoading] = useState<Record<string, boolean>>({});
+  const [skillsXml, setSkillsXml] = useState('');
+  const [skillsXmlLoading, setSkillsXmlLoading] = useState(false);
 
   const agents = [
     { value: 'main', label: 'main (Opus)' },
@@ -99,6 +104,10 @@ export const SystemPrompt: React.FC = () => {
   ];
 
   useEffect(() => {
+    setFileContents({});
+    setFileLoading({});
+    setSkillsXml('');
+    setSkillsXmlLoading(false);
     fetchPrompt();
   }, [agent]);
 
@@ -114,6 +123,38 @@ export const SystemPrompt: React.FC = () => {
       console.error('Failed to fetch system prompt:', e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadFileContent = async (name: string) => {
+    if (fileContents[name] || fileLoading[name]) return;
+    setFileLoading(prev => ({ ...prev, [name]: true }));
+    try {
+      const resp = await fetch(`/api/system-prompt/file?agent=${encodeURIComponent(agent)}&name=${encodeURIComponent(name)}`, {
+        credentials: 'include',
+      });
+      const d = await resp.json();
+      setFileContents(prev => ({ ...prev, [name]: d.content || '' }));
+    } catch (e) {
+      console.error('Failed to fetch file content:', e);
+    } finally {
+      setFileLoading(prev => ({ ...prev, [name]: false }));
+    }
+  };
+
+  const loadSkillsXml = async () => {
+    if (skillsXml || skillsXmlLoading) return;
+    setSkillsXmlLoading(true);
+    try {
+      const resp = await fetch(`/api/system-prompt/skills-xml?agent=${encodeURIComponent(agent)}`, {
+        credentials: 'include',
+      });
+      const d = await resp.json();
+      setSkillsXml(d.skills_xml || '');
+    } catch (e) {
+      console.error('Failed to fetch skills XML:', e);
+    } finally {
+      setSkillsXmlLoading(false);
     }
   };
 
@@ -204,7 +245,10 @@ export const SystemPrompt: React.FC = () => {
         <Text size="sm" c="dimmed" mb="md">
           {t('systemPrompt.sections.workspaceFilesDesc', 'Markdown files injected into every prompt. AGENTS.md, SOUL.md, USER.md etc. define personality, memory, rules, and user context. Full content is sent every time.')}
         </Text>
-        <Accordion variant="separated">
+        <Accordion variant="separated" onChange={(value) => {
+          const names = Array.isArray(value) ? value : value ? [value] : [];
+          names.forEach((name) => loadFileContent(String(name)));
+        }}>
           {workspaceFiles.map((file) => (
             <Accordion.Item key={file.name} value={file.name}>
               <Accordion.Control>
@@ -226,7 +270,9 @@ export const SystemPrompt: React.FC = () => {
               <Accordion.Panel>
                 <ScrollArea.Autosize mah={500} type="auto">
                   <Code block style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>
-                    {file.content}
+                    {fileLoading[file.name]
+                      ? 'Loading…'
+                      : (fileContents[file.name] ?? 'Click to load content')}
                   </Code>
                 </ScrollArea.Autosize>
               </Accordion.Panel>
@@ -274,7 +320,10 @@ export const SystemPrompt: React.FC = () => {
           </ScrollArea>
 
           {/* Show the actual XML that gets injected */}
-          <Accordion variant="separated">
+          <Accordion variant="separated" onChange={(value) => {
+            const names = Array.isArray(value) ? value : value ? [value] : [];
+            if (names.includes('xml')) loadSkillsXml();
+          }}>
             <Accordion.Item value="xml">
               <Accordion.Control>
                 <Text size="sm" fw={500}>{t('systemPrompt.sections.skillsXml', 'Injected XML Block (as sent in prompt)')}</Text>
@@ -282,7 +331,7 @@ export const SystemPrompt: React.FC = () => {
               <Accordion.Panel>
                 <ScrollArea.Autosize mah={500} type="auto">
                   <Code block style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>
-                    {data.skills_xml}
+                    {skillsXmlLoading ? 'Loading…' : (skillsXml || 'Click to load XML block')}
                   </Code>
                 </ScrollArea.Autosize>
               </Accordion.Panel>
