@@ -137,27 +137,6 @@ Environment variables `CLAWSCOPE_HOST` and `CLAWSCOPE_PORT` override config valu
 
 ---
 
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/login` | Authenticate, returns JWT |
-| `GET` | `/api/dashboard-stats` | Overview with live health |
-| `GET` | `/api/costs/*` | Cost data by time range, model, user |
-| `GET` | `/api/cost-insights` | 6 computed cost metrics |
-| `GET` | `/api/prompt/turns` | Paginated prompt timeline |
-| `GET` | `/api/real-prompts?agent=&offset=` | Historical runs per agent |
-| `GET` | `/api/visualize-prompt` | Simulate prompt assembly |
-| `GET` | `/api/models` | Available models with pricing |
-| `GET` | `/api/cron-jobs` | Cron job status |
-| `GET` | `/api/collector-status` | Collector pipeline health |
-| `GET` | `/api/system-prompt` | Active system prompt data |
-| `GET` | `/health` | Unauthenticated health check |
-
-All endpoints except `/health` and `/api/login` require a JWT Bearer token.
-
----
-
 ## Troubleshooting
 
 **Dashboard shows no data:** Run `bash collect.sh` to trigger collectors manually.
