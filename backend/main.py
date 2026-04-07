@@ -18,7 +18,8 @@ from auth import verify_password, create_access_token, check_session
 import config
 
 # Initialize FastAPI
-app = FastAPI(title="Clawscope", version="2.0.0")
+CLAWSCOPE_VERSION = "1.0.1"
+app = FastAPI(title="Clawscope", version=CLAWSCOPE_VERSION)
 
 # CORS middleware
 app.add_middleware(
@@ -2259,6 +2260,67 @@ async def get_users(user=Depends(check_session)):
 async def get_api_key_labels(user=Depends(check_session)):
     """Return API key → label mapping."""
     return config.get_api_key_labels()
+
+
+# ─── Version & Update ──────────────────────────────────────────
+
+import urllib.request
+
+@app.get("/api/version")
+async def get_version(user=Depends(check_session)):
+    """Return local version and check GitHub for updates."""
+    result = {"local": CLAWSCOPE_VERSION, "remote": None, "update_available": False}
+    try:
+        req = urllib.request.Request(
+            "https://raw.githubusercontent.com/applab-ai/clawscope/main/backend/main.py",
+            headers={"User-Agent": "Clawscope"}
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            for line in resp.read().decode().splitlines():
+                if line.startswith("CLAWSCOPE_VERSION"):
+                    remote = line.split('"')[1]
+                    result["remote"] = remote
+                    result["update_available"] = remote != CLAWSCOPE_VERSION
+                    break
+    except Exception:
+        pass
+    return result
+
+
+@app.post("/api/update")
+async def run_update(user=Depends(check_session)):
+    """Pull latest from GitHub, rebuild frontend, restart backend."""
+    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    steps = []
+    try:
+        # git pull
+        r = subprocess.run(["git", "pull", "--ff-only"], capture_output=True, text=True, cwd=project_dir, timeout=30)
+        steps.append({"step": "git pull", "ok": r.returncode == 0, "output": (r.stdout + r.stderr).strip()[:500]})
+        if r.returncode != 0:
+            return {"success": False, "steps": steps}
+
+        # pip install
+        venv_pip = os.path.join(project_dir, ".venv", "bin", "pip")
+        if os.path.exists(venv_pip):
+            r = subprocess.run([venv_pip, "install", "-r", "backend/requirements.txt", "-q"], capture_output=True, text=True, cwd=project_dir, timeout=60)
+            steps.append({"step": "pip install", "ok": r.returncode == 0, "output": (r.stdout + r.stderr).strip()[:300]})
+
+        # npm build
+        frontend_dir = os.path.join(project_dir, "frontend")
+        if os.path.exists(os.path.join(frontend_dir, "package.json")):
+            r = subprocess.run(["npx", "vite", "build"], capture_output=True, text=True, cwd=frontend_dir, timeout=120,
+                             env={**os.environ, "PATH": f"/opt/homebrew/bin:/usr/local/bin:{os.environ.get('PATH', '')}" })
+            steps.append({"step": "npm build", "ok": r.returncode == 0, "output": (r.stdout + r.stderr).strip()[:300]})
+
+        # Restart via launchctl
+        uid = os.getuid()
+        r = subprocess.run(["launchctl", "kickstart", "-k", f"gui/{uid}/ai.openclaw.clawscope"], capture_output=True, text=True, timeout=10)
+        steps.append({"step": "restart", "ok": r.returncode == 0, "output": (r.stdout + r.stderr).strip()[:200]})
+
+        return {"success": all(s["ok"] for s in steps), "steps": steps}
+    except Exception as e:
+        steps.append({"step": "error", "ok": False, "output": str(e)})
+        return {"success": False, "steps": steps}
 
 
 # Catch-all for frontend routing

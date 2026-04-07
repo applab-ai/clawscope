@@ -459,5 +459,12 @@
   "language": {
     "en": "EN",
     "de": "DE"
+  },
+  "version": {
+    "available": "verfügbar",
+    "upToDate": "Aktuell",
+    "update": "Update",
+    "check": "Prüfen",
+    "restarting": "Neustart..."
   }
 }

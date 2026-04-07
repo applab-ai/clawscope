@@ -23,6 +23,9 @@ import {
   IconHelp,
   IconSparkles,
   IconArrowRight,
+  IconDownload,
+  IconCheck,
+  IconRefresh,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -39,10 +42,40 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ refreshTrigger }) 
   const [loading, setLoading] = useState(true);
   const hasLoaded = useRef(false);
   const [error, setError] = useState<string | null>(null);
+  const [versionInfo, setVersionInfo] = useState<{ local: string; remote: string | null; update_available: boolean } | null>(null);
+  const [updating, setUpdating] = useState(false);
+  const [updateResult, setUpdateResult] = useState<{ success: boolean; steps: any[] } | null>(null);
 
   useEffect(() => {
     fetchStats();
+    fetchVersion();
   }, [refreshTrigger]);
+
+  const fetchVersion = async () => {
+    try {
+      const resp = await api.rawFetch('/api/version');
+      const data = await resp.json();
+      setVersionInfo(data);
+    } catch { /* ignore */ }
+  };
+
+  const runUpdate = async () => {
+    setUpdating(true);
+    setUpdateResult(null);
+    try {
+      const resp = await api.rawFetch('/api/update', { method: 'POST' });
+      const data = await resp.json();
+      setUpdateResult(data);
+      if (data.success) {
+        // Backend restarts — wait then reload
+        setTimeout(() => window.location.reload(), 4000);
+      }
+    } catch (e) {
+      setUpdateResult({ success: false, steps: [{ step: 'request', ok: false, output: String(e) }] });
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -171,6 +204,56 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ refreshTrigger }) 
           </ThemeIcon>
         </Group>
       </Card>
+
+      {/* Version Info */}
+      {versionInfo && (
+        <Card padding="md" radius="md" withBorder>
+          <Group justify="space-between" align="center" wrap="wrap">
+            <Group gap="sm">
+              <Text size="sm" c="dimmed">Clawscope</Text>
+              <Badge color="blue" variant="light" size="lg">v{versionInfo.local}</Badge>
+              {versionInfo.update_available && versionInfo.remote && (
+                <Badge color="green" variant="filled" size="sm">v{versionInfo.remote} {t('version.available', 'available')}</Badge>
+              )}
+              {!versionInfo.update_available && versionInfo.remote && (
+                <Group gap={4}>
+                  <IconCheck size={14} color="var(--mantine-color-green-6)" />
+                  <Text size="xs" c="green">{t('version.upToDate', 'Up to date')}</Text>
+                </Group>
+              )}
+            </Group>
+            <Group gap="sm">
+              {versionInfo.update_available && (
+                <Button
+                  size="xs"
+                  variant="gradient"
+                  gradient={{ from: 'green', to: 'teal' }}
+                  leftSection={<IconDownload size={14} />}
+                  loading={updating}
+                  onClick={runUpdate}
+                >
+                  {t('version.update', 'Update')}
+                </Button>
+              )}
+              <Button size="xs" variant="subtle" color="gray" onClick={fetchVersion} leftSection={<IconRefresh size={14} />}>
+                {t('version.check', 'Check')}
+              </Button>
+            </Group>
+          </Group>
+          {updateResult && (
+            <Stack gap="xs" mt="sm">
+              {updateResult.steps.map((s: any, i: number) => (
+                <Group key={i} gap="xs">
+                  <Badge color={s.ok ? 'green' : 'red'} size="xs" variant="filled">{s.ok ? '✓' : '✗'}</Badge>
+                  <Text size="xs" fw={500}>{s.step}</Text>
+                  {s.output && <Text size="xs" c="dimmed" lineClamp={1}>{s.output}</Text>}
+                </Group>
+              ))}
+              {updateResult.success && <Text size="xs" c="green">{t('version.restarting', 'Restarting...')}</Text>}
+            </Stack>
+          )}
+        </Card>
+      )}
 
       {/* Stats Cards */}
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg">
