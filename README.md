@@ -22,6 +22,10 @@ Clawscope was built to solve three problems:
 
 ## ✦ Prompt Visualizer — The Core Feature
 
+<p align="center">
+  <img src="docs/prompt-visualizer.jpg" alt="Prompt Visualizer" width="360" />
+</p>
+
 The Prompt Visualizer is what makes Clawscope unique. It shows you the full prompt assembly pipeline in 7 steps:
 
 ```
