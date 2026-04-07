@@ -183,7 +183,7 @@ export const Settings: React.FC = () => {
             <Select
               label={t('settings.languageSelect', 'Interface Language')}
               value={i18n.language.startsWith('de') ? 'de' : 'en'}
-              onChange={(v) => v && i18n.changeLanguage(v)}
+              onChange={(v) => { if (v) { localStorage.setItem('clawscope-lang', v); i18n.changeLanguage(v); } }}
               data={[
                 { value: 'en', label: '🇬🇧 English' },
                 { value: 'de', label: '🇩🇪 Deutsch' },

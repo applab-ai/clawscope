@@ -501,7 +501,7 @@ export const PromptVisualizer: React.FC = () => {
   const { t } = useTranslation();
   const [agent, setAgent] = useState('main');
   const [model, setModel] = useState('claude-opus-4-6');
-  const [text, setText] = useState('Wie wird das Wetter morgen in München?');
+  const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<VisualizerResult | null>(null);
   const [error, setError] = useState<string | null>(null);
