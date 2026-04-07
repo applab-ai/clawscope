@@ -94,35 +94,7 @@ Then open `http://localhost:8000` and you're in.
 
 ---
 
-## Architecture
-
-```
-~/.openclaw/clawscope/
-├── backend/
-│   ├── main.py                  # FastAPI server
-│   ├── config.py                # Centralised config from config.yaml
-│   ├── auth.py                  # JWT authentication
-│   ├── db.py                    # SQLAlchemy models (SQLite)
-│   ├── collector.py             # Gateway metrics collector
-│   ├── transcript_collector.py  # Session JSONL → cost/token data
-│   ├── prompt_collector.py      # Session JSONL → prompt history
-│   ├── agent_collector.py       # Live agent status
-│   └── agent_cost_indexer.py    # Per-agent cost indexing
-├── frontend/
-│   ├── src/components/          # React + Mantine v9 + TypeScript
-│   ├── src/i18n/                # EN/DE translations
-│   └── dist/                    # Production build (served by backend)
-├── data/                        # SQLite databases + logs
-├── config.yaml                  # Instance config (gitignored)
-├── config.yaml.sample           # Template with placeholders
-├── install.sh                   # Interactive installer
-├── get.sh                       # Bootstrap script for curl install
-├── collect.sh                   # Run all collectors
-├── start.sh / stop.sh           # Lifecycle scripts
-└── LICENSE                      # MIT
-```
-
-### Data Flow
+## Data Flow
 
 ```
 OpenClaw Instance
