@@ -520,7 +520,10 @@ export const PromptVisualizer: React.FC = () => {
   const [realRunDetails, setRealRunDetails] = useState<Record<string, RealPromptRunDetail>>({});
   const [detailLoading, setDetailLoading] = useState<Record<string, boolean>>({});
   const [hasMore, setHasMore] = useState(true);
-  const loadMoreRef = React.useRef<HTMLDivElement | null>(null);
+  const [listScrollTop, setListScrollTop] = useState(0);
+  const [listViewportHeight, setListViewportHeight] = useState(600);
+  const [rowHeights, setRowHeights] = useState<Record<string, number>>({});
+  const listContainerRef = React.useRef<HTMLDivElement | null>(null);
   const realLoadingRef = React.useRef(false);
 
   const AGENTS = [
@@ -610,23 +613,65 @@ export const PromptVisualizer: React.FC = () => {
     setExpandedRuns(new Set());
     setRealRunDetails({});
     setDetailLoading({});
+    setRowHeights({});
+    setListScrollTop(0);
     loadRealRuns(agent);
   }, [agent]);
 
-  // Infinite scroll — load more when sentinel is visible
   React.useEffect(() => {
-    if (!loadMoreRef.current) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !realLoading) {
-          loadRealRuns(agent, true);
-        }
-      },
-      { threshold: 0.1 }
-    );
-    observer.observe(loadMoreRef.current);
+    const node = listContainerRef.current;
+    if (!node) return;
+
+    const updateSize = () => setListViewportHeight(node.clientHeight || 600);
+    updateSize();
+
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(node);
     return () => observer.disconnect();
-  }, [hasMore, realLoading, agent, realRuns.length]);
+  }, [showReal, realRuns.length]);
+
+  const OVERSCAN = 4;
+  const FOOTER_HEIGHT = 44;
+  const estimatedHeights = realRuns.map((run) => {
+    const key = getRunKey(run);
+    return rowHeights[key] ?? (expandedRuns.has(key) ? 520 : 88);
+  });
+  const offsets: number[] = [];
+  let runningOffset = 0;
+  for (const height of estimatedHeights) {
+    offsets.push(runningOffset);
+    runningOffset += height + 8;
+  }
+  const totalVirtualHeight = runningOffset + FOOTER_HEIGHT;
+
+  let startIndex = 0;
+  while (startIndex < realRuns.length && offsets[startIndex] + estimatedHeights[startIndex] < listScrollTop) {
+    startIndex += 1;
+  }
+  startIndex = Math.max(0, startIndex - OVERSCAN);
+
+  let endIndex = startIndex;
+  const maxVisibleBottom = listScrollTop + listViewportHeight;
+  while (endIndex < realRuns.length && offsets[endIndex] < maxVisibleBottom) {
+    endIndex += 1;
+  }
+  endIndex = Math.min(realRuns.length, endIndex + OVERSCAN);
+
+  const visibleRuns = realRuns.slice(startIndex, endIndex);
+
+  const measureRow = (key: string, el: HTMLDivElement | null) => {
+    if (!el) return;
+    const nextHeight = Math.ceil(el.getBoundingClientRect().height);
+    setRowHeights(prev => prev[key] === nextHeight ? prev : { ...prev, [key]: nextHeight });
+  };
+
+  const handleListScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    setListScrollTop(target.scrollTop);
+    if (hasMore && !realLoading && target.scrollTop + target.clientHeight >= target.scrollHeight - 300) {
+      loadRealRuns(agent, true);
+    }
+  };
 
   return (
     <Stack gap="md">
@@ -785,8 +830,14 @@ export const PromptVisualizer: React.FC = () => {
         </Group>
 
         {showReal && realRuns.length > 0 && (
-          <Stack gap="xs">
-            {realRuns.map((run) => {
+          <div
+            ref={listContainerRef}
+            onScroll={handleListScroll}
+            style={{ maxHeight: '70vh', overflowY: 'auto', position: 'relative' }}
+          >
+            <div style={{ height: totalVirtualHeight, position: 'relative' }}>
+            {visibleRuns.map((run, visibleIndex) => {
+              const actualIndex = startIndex + visibleIndex;
               const runKey = getRunKey(run);
               const expanded = expandedRuns.has(runKey);
               const detail = realRunDetails[runKey];
@@ -799,7 +850,12 @@ export const PromptVisualizer: React.FC = () => {
                 if (!expanded) loadRealRunDetail(run);
               };
               return (
-                <Card key={runKey} withBorder p="sm" style={{ cursor: 'pointer' }} onClick={toggleExpand}>
+                <div
+                  key={runKey}
+                  ref={(el) => measureRow(runKey, el)}
+                  style={{ position: 'absolute', top: offsets[actualIndex], left: 0, right: 0 }}
+                >
+                <Card withBorder p="sm" style={{ cursor: 'pointer' }} onClick={toggleExpand}>
                   {/* Row 1: timestamp left, cost right */}
                   <Group justify="space-between" wrap="nowrap">
                     <Text size="sm" c="dimmed" style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -903,18 +959,17 @@ export const PromptVisualizer: React.FC = () => {
                     </Stack>}
                   </Collapse>
                 </Card>
+                </div>
               );
             })}
-            {/* Infinite scroll sentinel */}
-            {hasMore && (
-              <div ref={loadMoreRef} style={{ height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {realLoading && <Text size="xs" c="dimmed">{t('visualizer.loadingMore')}</Text>}
-              </div>
-            )}
-            {!hasMore && realRuns.length > 0 && (
-              <Text size="xs" c="dimmed" ta="center" py="xs">{t('visualizer.allLoaded', { count: realRuns.length })}</Text>
-            )}
-          </Stack>
+            <div style={{ position: 'absolute', left: 0, right: 0, top: Math.max(runningOffset, 0), height: FOOTER_HEIGHT, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {hasMore && realLoading && <Text size="xs" c="dimmed">{t('visualizer.loadingMore')}</Text>}
+              {!hasMore && realRuns.length > 0 && (
+                <Text size="xs" c="dimmed" ta="center" py="xs">{t('visualizer.allLoaded', { count: realRuns.length })}</Text>
+              )}
+            </div>
+            </div>
+          </div>
         )}
 
         {showReal && realRuns.length === 0 && !realLoading && (
