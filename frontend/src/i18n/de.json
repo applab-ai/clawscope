@@ -437,7 +437,8 @@
     "allLoaded": "Alle {{count}} Runs geladen",
     "noRuns": "Keine Runs gefunden.",
     "visualizePrompt": "Prompt visualisieren",
-    "realRunsDesc": "Token-Verbrauch und Kosten der letzten echten API-Calls aus den Session-Logs"
+    "realRunsDesc": "Token-Verbrauch und Kosten der letzten echten API-Calls aus den Session-Logs",
+    "placeholder": "z.B. Wie wird das Wetter morgen?"
   },
   "insights": {
     "costPerMessage": "💬 Kosten pro Nachricht ({{period}})",
