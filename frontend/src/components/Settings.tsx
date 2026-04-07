@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Card, Title, Text, Stack, Group, TextInput, PasswordInput, Button,
-  Table, ActionIcon, Alert, Loader, Center, Divider, NumberInput,
-  Code, Textarea, Tooltip, Badge, SimpleGrid,
+  Table, ActionIcon, Alert, Loader, Center, NumberInput,
+  Code, Badge, SimpleGrid,
 } from '@mantine/core';
 import { IconPlus, IconTrash, IconDeviceFloppy, IconCheck, IconAlertCircle } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';

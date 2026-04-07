@@ -4,6 +4,17 @@ All notable changes to Clawscope are documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [1.0.2] — 2026-04-07
+
+### Fixed
+
+- Real Prompt Runs expand reliably inside the virtualized list without requiring a scroll-triggered reflow
+- System Prompt page now lazy-loads heavy file contents and skills XML instead of blocking initial render
+
+### Changed
+
+- System Prompt metadata cache increased to reduce repeated expensive CLI work during normal navigation
+
 ## [1.0.0] — 2026-04-06
 
 ### Initial Release

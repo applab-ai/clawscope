@@ -5,7 +5,6 @@ import {
   Group,
   Stack,
   Badge,
-  Table,
   ThemeIcon,
   Code,
   Collapse,
@@ -69,7 +68,7 @@ export const CollectorStatus: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const resp = await api.request('/collector-status');
+      const resp = await api.request<CollectorStatusData>('/collector-status');
       setData(resp);
     } catch (e) {
       console.error('Failed to fetch collector status', e);

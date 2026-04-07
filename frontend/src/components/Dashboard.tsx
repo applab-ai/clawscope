@@ -8,7 +8,6 @@ import {
   NavLink,
   Stack,
   Burger,
-  SegmentedControl,
   Divider,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
@@ -43,7 +42,7 @@ interface DashboardProps {
 import { IconFileText, IconHistory, IconRobot, IconSettings, IconHeartRateMonitor } from '@tabler/icons-react';
 
 export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [opened, { toggle, close }] = useDisclosure();

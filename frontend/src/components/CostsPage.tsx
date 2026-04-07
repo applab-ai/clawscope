@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Card, Title, SimpleGrid, Table, ScrollArea, Text, Group, Center, Loader,
-  Alert, Button, Stack, Select, ThemeIcon,
+  Alert, Button, Stack, Select, ThemeIcon, Badge, Paper, Progress,
 } from '@mantine/core';
 import { PieChart, LineChart, BarChart as MantineBarChart } from '@mantine/charts';
-import { IconTrendingUp, IconCoins, IconMessage, IconShield, IconFlame, IconChartBar, IconRobot, IconClock } from '@tabler/icons-react';
-import { Badge, Paper, Progress, RingProgress } from '@mantine/core';
+import { IconTrendingUp, IconCoins } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { api, type TokenUsage } from '../services/api';
 
@@ -156,8 +155,6 @@ export const CostsPage: React.FC<CostsPageProps> = ({ refreshTrigger }) => {
   const formatCost = (c: number) => `$${c.toFixed(2)}`;
   const formatTokens = (t: number) => t >= 1e12 ? `${(t / 1e12).toFixed(1)} Bio` : t >= 1e9 ? `${(t / 1e9).toFixed(1)} Mrd` : t >= 1e6 ? `${(t / 1e6).toFixed(1)} Mio` : t >= 1e3 ? `${(t / 1e3).toFixed(0)} Tsd` : `${t}`;
   const formatPct = (v: number, total: number) => total > 0 ? `${((v / total) * 100).toFixed(1)}%` : '0%';
-  const shortModel = (m: string) => m.replace('claude-', '').replace(/-\d{8,}$/, '');
-
   if (loading) return <Center p="xl"><Loader size="lg" /></Center>;
   if (error) return <Alert color="red"><Text>{error}</Text><Button size="xs" onClick={fetchData} mt="xs">{t('common.retry')}</Button></Alert>;
 

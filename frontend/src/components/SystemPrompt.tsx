@@ -20,8 +20,6 @@ import {
 } from '@mantine/core';
 import {
   IconFile,
-  IconHash,
-  IconDatabase,
   IconPuzzle,
   IconBolt,
   IconShieldCheck,
@@ -295,7 +293,7 @@ export const SystemPrompt: React.FC = () => {
 
           {/* Skill table */}
           <ScrollArea>
-            <Table highlightOnHover withTableBorder withColumnBorders fontSize="xs" mb="md">
+            <Table highlightOnHover withTableBorder withColumnBorders mb="md">
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Skill</Table.Th>
