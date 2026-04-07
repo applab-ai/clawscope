@@ -652,7 +652,7 @@ async def get_cron_history(
     }
 
 SYSTEM_PROMPT_CACHE = {}
-SYSTEM_PROMPT_CACHE_TTL = 30
+SYSTEM_PROMPT_CACHE_TTL = 300
 
 
 def _resolve_agent_workspace(agent: str):
