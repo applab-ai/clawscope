@@ -206,7 +206,7 @@ function StepDetail({ step }: { step: VisualizerStep }) {
     case 'cost':
       return <CostDetail items={step.items as CostItem[]} costMeta={step.cost} />;
     default:
-      return <Text size="sm" c="dimmed">Keine Details verfügbar.</Text>;
+      return <Text size="sm" c="dimmed">{t('visualizer.noDetails', 'No details available.')}</Text>;
   }
 }
 
@@ -462,7 +462,7 @@ function CostDetail({ items, costMeta }: { items: CostItem[]; costMeta?: Visuali
           </Table.Tr>
         </Table.Tbody>
       </Table>
-      <Text size="xs" c="dimmed">Modell: {costMeta.model_id} | Input: ${costMeta.prices.input}/1M | Cache-Read: ${costMeta.prices.cache_read}/1M | Output: ${costMeta.prices.output}/1M</Text>
+      <Text size="xs" c="dimmed">{t('visualizer.model', 'Model')}: {costMeta.model_id} | Input: ${costMeta.prices.input}/1M | Cache-Read: ${costMeta.prices.cache_read}/1M | Output: ${costMeta.prices.output}/1M</Text>
     </Stack>
   );
 }
@@ -627,7 +627,7 @@ export const PromptVisualizer: React.FC = () => {
             size="sm"
           />
           <Select
-            label={t('visualizer.model', 'Modell')}
+            label={t('visualizer.model', 'Model')}
             data={MODELS}
             value={model}
             onChange={v => setModel(v || 'claude-opus-4-6')}
@@ -638,8 +638,8 @@ export const PromptVisualizer: React.FC = () => {
 
         <Stack gap="xs">
           <Textarea
-            label={t('visualizer.userMessage', 'Beispiel-Nachricht')}
-            placeholder="z.B. Wie wird das Wetter morgen?"
+            label={t('visualizer.userMessage', 'Sample message')}
+            placeholder={t('visualizer.placeholder', 'e.g. How\'s the weather tomorrow?')}
             value={text}
             onChange={e => setText(e.target.value)}
             size="sm"
@@ -656,7 +656,7 @@ export const PromptVisualizer: React.FC = () => {
             size="sm"
             fullWidth
           >
-            {t('visualizer.run', 'Visualisieren')}
+            {t('visualizer.run', 'Visualize')}
           </Button>
         </Stack>
       </Card>
@@ -666,7 +666,7 @@ export const PromptVisualizer: React.FC = () => {
         <Center py="xl">
           <Stack align="center" gap="sm">
             <Loader color="violet" size="lg" />
-            <Text c="dimmed" size="sm">{t('visualizer.analyzing', 'Pipeline wird analysiert...')}</Text>
+            <Text c="dimmed" size="sm">{t('visualizer.analyzing', 'Analyzing pipeline...')}</Text>
           </Stack>
         </Center>
       )}
@@ -739,8 +739,8 @@ export const PromptVisualizer: React.FC = () => {
       <Card withBorder radius="md" p="md">
         <Group justify="space-between" mb="sm">
           <Stack gap={0}>
-            <Text fw={600} size="sm">{t('visualizer.realRuns', 'Echte Prompt-Runs')}</Text>
-            <Text size="xs" c="dimmed">{t('visualizer.realRunsDesc', 'Token-Verbrauch und Kosten der letzten echten API-Calls aus den Session-Logs')}</Text>
+            <Text fw={600} size="sm">{t('visualizer.realRuns', 'Real Prompt Runs')}</Text>
+            <Text size="xs" c="dimmed">{t('visualizer.realRunsDesc', 'Token usage and costs from actual API calls in session logs')}</Text>
           </Stack>
           <Button
             variant="light"
@@ -749,7 +749,7 @@ export const PromptVisualizer: React.FC = () => {
             onClick={loadRealRuns}
             loading={realLoading}
           >
-            {showReal ? t('visualizer.refresh', 'Aktualisieren') : t('visualizer.loadRuns', 'Laden')}
+            {showReal ? t('visualizer.refresh', 'Refresh') : t('visualizer.loadRuns', 'Load')}
           </Button>
         </Group>
 
