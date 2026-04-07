@@ -298,6 +298,90 @@ export const CostsPage: React.FC<CostsPageProps> = ({ refreshTrigger }) => {
         );
       })()}
 
+      {/* Costs by Channel */}
+      {(() => {
+        const byChannel = new Map<string, { channel: string; users: Set<string>; tokens: number; cost: number }>();
+        filteredUsage.filter(item => item.source === 'transcript').forEach(item => {
+          const ch = item.channel || 'system';
+          const existing = byChannel.get(ch);
+          const tokens = item.tokens_input + item.tokens_output + (item.tokens_cache_write || 0) + (item.tokens_cache_read || 0);
+          if (existing) {
+            existing.tokens += tokens;
+            existing.cost += item.cost_total;
+            existing.users.add(item.api_key);
+          } else {
+            byChannel.set(ch, { channel: ch, users: new Set([item.api_key]), tokens, cost: item.cost_total });
+          }
+        });
+        const channelData = Array.from(byChannel.values()).filter(a => a.cost > 0).sort((a, b) => b.cost - a.cost);
+        const totalChannelCost = channelData.reduce((s, a) => s + a.cost, 0);
+        if (channelData.length === 0) return null;
+
+        const channelBadge = (ch: string) => {
+          const map: Record<string, { color: string; label: string }> = {
+            telegram: { color: 'blue', label: 'Telegram' },
+            whatsapp: { color: 'green', label: 'WhatsApp' },
+            discord: { color: 'violet', label: 'Discord' },
+            slack: { color: 'grape', label: 'Slack' },
+            signal: { color: 'indigo', label: 'Signal' },
+            system: { color: 'gray', label: 'System' },
+          };
+          const info = map[ch] || { color: 'dark', label: ch };
+          return <Badge color={info.color} variant="filled" size="sm">{info.label}</Badge>;
+        };
+
+        return (
+          <Card withBorder>
+            <Title order={4} mb="md">{t('costs.sections.byChannel', { period: periodLabel })}</Title>
+            <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="xl">
+              <Center>
+                <PieChart size={220}
+                  data={channelData.map((a, i) => ({
+                    name: a.channel, value: parseFloat(a.cost.toFixed(4)), color: COLORS[i % COLORS.length]
+                  }))}
+                  withLabelsLine labelsPosition="outside" labelsType="percent" withTooltip />
+              </Center>
+              <ScrollArea type="auto">
+              <Table highlightOnHover miw={500} style={{ whiteSpace: 'nowrap' }}>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>{t('costs.table.channel')}</Table.Th>
+                    <Table.Th>{t('costs.table.users')}</Table.Th>
+                    <Table.Th ta="right">{t('costs.table.tokens')}</Table.Th>
+                    <Table.Th ta="right">{t('costs.table.cost')}</Table.Th>
+                    <Table.Th ta="right">{t('costs.table.percent')}</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {channelData.map((a, i) => (
+                    <Table.Tr key={a.channel}>
+                      <Table.Td>
+                        <Group gap="xs">
+                          <div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: `var(--mantine-color-${COLORS[i % COLORS.length].replace('.', '-')})` }} />
+                          {channelBadge(a.channel)}
+                        </Group>
+                      </Table.Td>
+                      <Table.Td><Text size="sm">{Array.from(a.users).join(', ')}</Text></Table.Td>
+                      <Table.Td ta="right"><Text size="sm" ff="monospace">{formatTokens(a.tokens)}</Text></Table.Td>
+                      <Table.Td ta="right"><Text size="sm" ff="monospace">{formatCost(a.cost)}</Text></Table.Td>
+                      <Table.Td ta="right"><Text size="sm">{formatPct(a.cost, totalChannelCost)}</Text></Table.Td>
+                    </Table.Tr>
+                  ))}
+                  <Table.Tr style={{ fontWeight: 600 }}>
+                    <Table.Td>{t('costs.table.total')}</Table.Td>
+                    <Table.Td></Table.Td>
+                    <Table.Td ta="right" ff="monospace">{formatTokens(channelData.reduce((s, x) => s + x.tokens, 0))}</Table.Td>
+                    <Table.Td ta="right" ff="monospace">{formatCost(totalChannelCost)}</Table.Td>
+                    <Table.Td ta="right">100%</Table.Td>
+                  </Table.Tr>
+                </Table.Tbody>
+              </Table>
+              </ScrollArea>
+            </SimpleGrid>
+          </Card>
+        );
+      })()}
+
       {/* Cost by Model */}
       <Card withBorder>
         <SimpleGrid cols={1} spacing="xl">

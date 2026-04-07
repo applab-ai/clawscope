@@ -52,6 +52,7 @@ export interface TokenUsage {
   tokens_cache_write: number;
   tokens_cache_read: number;
   cost_total: number;
+  channel: string;
 }
 
 export interface CostSummary {

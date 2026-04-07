@@ -91,6 +91,7 @@ class TokenUsageResponse(BaseModel):
     tokens_cache_write: int = 0
     tokens_cache_read: int = 0
     cost_total: float
+    channel: str = ''
 
 class DashboardStats(BaseModel):
     total_cron_jobs: int
@@ -349,7 +350,8 @@ async def get_token_usage(
             tokens_output=u.tokens_output,
             tokens_cache_write=u.tokens_cache_write or 0,
             tokens_cache_read=u.tokens_cache_read or 0,
-            cost_total=u.cost_total
+            cost_total=u.cost_total,
+            channel=u.channel or ''
         ))
     
     return result

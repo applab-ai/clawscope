@@ -61,6 +61,7 @@ class TokenUsage(Base):
     source = Column(String, index=True)  # 'gateway' oder 'transcript'
     api_key = Column(String, index=True)  # 'total' for Gateway, user categories for Transcripts
     model = Column(String, index=True)  # 'all' für Gateway, konkretes Model für Transcripts
+    channel = Column(String, index=True)  # telegram, whatsapp, discord, system, etc.
     tokens_input = Column(Integer, default=0)
     tokens_output = Column(Integer, default=0)
     tokens_cache_write = Column(Integer, default=0)

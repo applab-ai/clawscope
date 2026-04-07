@@ -46,6 +46,9 @@ def _sender_id_map():
 def _user_display_map():
     return config.get_user_display_map()
 
+def _channel_map():
+    return config.get_channel_map()
+
 
 def build_session_id_map() -> dict:
     """Map session UUIDs to user category using known IDs + transcript heuristics."""
@@ -110,7 +113,9 @@ def build_session_id_map() -> dict:
 def extract_usage_from_transcripts(sid_map: dict):
     """Extract token usage from all session transcript .jsonl files."""
     
-    # (date, user_category, model) -> aggregated usage
+    channel_map = _channel_map()
+    
+    # (date, user_category, model, channel) -> aggregated usage
     usage_by_day = defaultdict(lambda: {
         'tokens_input': 0, 'tokens_output': 0,
         'tokens_cache_write': 0, 'tokens_cache_read': 0,
@@ -176,7 +181,8 @@ def extract_usage_from_transcripts(sid_map: dict):
                             (tokens_cache_read / 1e6) * p['cache_read']
                         )
                     
-                    key = (date_str, user_cat, model)
+                    channel = channel_map.get(user_cat, 'system')
+                    key = (date_str, user_cat, model, channel)
                     agg = usage_by_day[key]
                     agg['tokens_input'] += tokens_input
                     agg['tokens_output'] += tokens_output
@@ -199,7 +205,7 @@ def save_to_db(usage_data: dict):
     
     try:
         upserted = 0
-        for (date_str, user_cat, model), data in usage_data.items():
+        for (date_str, user_cat, model, channel), data in usage_data.items():
             display_map = _user_display_map()
             api_key = display_map.get(user_cat, user_cat)
             
@@ -229,6 +235,7 @@ def save_to_db(usage_data: dict):
                 existing.cost_cache_write = cost_cache_write
                 existing.cost_cache_read = cost_cache_read
                 existing.cost_total = data['cost_total']
+                existing.channel = channel
             else:
                 # Create new record
                 record = TokenUsage(
@@ -236,6 +243,7 @@ def save_to_db(usage_data: dict):
                     source='transcript',
                     api_key=api_key,
                     model=model,
+                    channel=channel,
                     tokens_input=data['tokens_input'],
                     tokens_output=data['tokens_output'],
                     tokens_cache_write=data['tokens_cache_write'],

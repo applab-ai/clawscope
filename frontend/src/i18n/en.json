@@ -188,12 +188,15 @@
       "byAgent": "Costs by Agent ({{period}})",
       "breakdown": "Cost Breakdown ({{period}})",
       "byApiKey": "By Source",
-      "byModel": "By Model"
+      "byModel": "By Model",
+      "byChannel": "Costs by Channel ({{period}})"
     },
     "table": {
       "agent": "Agent",
       "apiKey": "Source",
       "model": "Model",
+      "channel": "Channel",
+      "users": "Users",
       "tokens": "Tokens",
       "cost": "Cost",
       "percent": "%",

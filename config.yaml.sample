@@ -16,9 +16,11 @@ users:
 - id: '123456789'
   name: Alice
   category: user
+  channel: telegram
 - id: '987654321'
   name: Bob
   category: admin
+  channel: telegram
 
 known_sessions: {}
 

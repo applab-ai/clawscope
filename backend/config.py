@@ -86,6 +86,19 @@ def get_sender_id_map() -> Dict[str, str]:
     return {str(u["id"]): u["name"].lower() for u in get_users() if u.get("id") and u.get("name")}
 
 
+def get_channel_map() -> Dict[str, str]:
+    """Return {lowercase_name: channel} for collectors."""
+    result = {}
+    for u in get_users():
+        if u.get("name") and u.get("channel"):
+            result[u["name"].lower()] = u["channel"]
+    # System categories
+    result["cron"] = "system"
+    result["subagent"] = "system"
+    result["unknown"] = "system"
+    return result
+
+
 def get_user_display_map() -> Dict[str, str]:
     """Return {lowercase_name: DisplayName} for collectors."""
     base = {}
