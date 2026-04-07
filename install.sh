@@ -14,6 +14,12 @@ NC='\033[0m'
 DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR"
 
+# When invoked via `curl ... | bash`, stdin is the pipe, not the terminal.
+# Reattach interactive prompts to the user's TTY so `read` works normally.
+if [ ! -t 0 ] && [ -r /dev/tty ]; then
+  exec < /dev/tty
+fi
+
 NO_SERVICE=false
 USE_DEFAULTS=false
 for arg in "$@"; do
