@@ -190,6 +190,7 @@ function StepNode({ step, index }: { step: VisualizerStep; index: number }) {
 
 /* ---- Detail renderers per step type ---- */
 function StepDetail({ step }: { step: VisualizerStep }) {
+  const { t } = useTranslation();
   switch (step.id) {
     case 'bootstrap':
       return <BootstrapDetail items={step.items as BootItem[]} />;
@@ -264,6 +265,7 @@ function SkillsDetail({ items }: { items: SkillItem[] }) {
 }
 
 function MatchDetail({ items, matched }: { items: MatchItem[]; matched?: string | null }) {
+  const { t } = useTranslation();
   return (
     <Stack gap="sm">
       {matched && (
@@ -420,6 +422,7 @@ function BoundaryDetail({ items, cached, dynamic }: { items: BoundaryItem[]; cac
 }
 
 function CostDetail({ items, costMeta }: { items: CostItem[]; costMeta?: VisualizerStep['cost'] }) {
+  const { t } = useTranslation();
   if (!costMeta) return null;
   return (
     <Stack gap="sm">
