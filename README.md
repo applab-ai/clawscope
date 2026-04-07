@@ -1,6 +1,6 @@
 # 🔬 Clawscope
 
-**See inside your OpenClaw.** The name comes from *endoscope* — a medical instrument that lets doctors look inside the body without cutting it open. Clawscope does the same for your OpenClaw instance: it makes the invisible visible.
+**An endoscope for your OpenClaw instance.** See what's happening inside — tokens, costs, prompt assembly, cron jobs, sessions — without digging through logs.
 
 Where are your tokens going? Which cron job is burning cash? What does the actual prompt look like that gets sent to Claude? Clawscope answers all of that — no log files, no guessing.
 
