@@ -1642,35 +1642,71 @@ async def visualize_prompt(body: dict, user=Depends(check_session)):
     }
 
 
+@app.get("/api/channels-for-agent")
+async def get_channels_for_agent(
+    agent: str = "main",
+    db: Session = Depends(get_db),
+    user=Depends(check_session)
+):
+    """Return distinct user_category values (channels) available for an agent."""
+    if agent == "main":
+        rows = (
+            db.query(PromptSession.user_category)
+            .filter((PromptSession.agent_id == "main") | (PromptSession.agent_id.is_(None)))
+            .distinct()
+            .all()
+        )
+    else:
+        rows = (
+            db.query(PromptSession.user_category)
+            .filter(PromptSession.agent_id == agent)
+            .distinct()
+            .all()
+        )
+    cats = sorted({r[0] for r in rows if r[0]})
+    options = [{"value": "all", "label": "All channels"}]
+    for c in cats:
+        options.append({"value": c, "label": c})
+    return options
+
+
 @app.get("/api/real-prompts")
 async def get_real_prompts(
     limit: int = 20,
     offset: int = 0,
     agent: str = "main",
+    channel: Optional[str] = None,
     db: Session = Depends(get_db),
     user=Depends(check_session)
 ):
     """Return recent real prompt runs from indexed prompt history tables."""
-    turns = (
-        db.query(PromptTurn, PromptSession)
-        .join(PromptSession, PromptTurn.session_id == PromptSession.session_id)
-        .filter(PromptSession.agent_id == agent)
-        .order_by(desc(PromptTurn.started_at))
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
-
-    if not turns and agent == "main":
-        turns = (
+    def _base_query():
+        q = (
             db.query(PromptTurn, PromptSession)
             .join(PromptSession, PromptTurn.session_id == PromptSession.session_id)
-            .filter((PromptSession.agent_id == "main") | (PromptSession.agent_id.is_(None)))
-            .order_by(desc(PromptTurn.started_at))
-            .offset(offset)
-            .limit(limit)
-            .all()
         )
+        return q
+
+    def _agent_filter(q, agent_id):
+        if agent_id == "main":
+            q = q.filter((PromptSession.agent_id == "main") | (PromptSession.agent_id.is_(None)))
+        else:
+            q = q.filter(PromptSession.agent_id == agent_id)
+        return q
+
+    def _channel_filter(q, ch):
+        if ch and ch != "all":
+            q = q.filter(PromptSession.user_category == ch)
+        return q
+
+    q = _base_query()
+    q = _agent_filter(q, agent)
+    q = _channel_filter(q, channel)
+    turns = q.order_by(desc(PromptTurn.started_at)).offset(offset).limit(limit).all()
+
+    if not turns and agent == "main" and not channel:
+        # legacy fallback — no extra filter needed, already handled above
+        pass
 
     if not turns:
         return []

@@ -524,6 +524,8 @@ export const PromptVisualizer: React.FC = () => {
   const [listViewportHeight, setListViewportHeight] = useState(600);
   const [rowHeights, setRowHeights] = useState<Record<string, number>>({});
   const [agentOptions, setAgentOptions] = useState<Array<{ value: string; label: string }>>([{ value: 'main', label: 'main' }]);
+  const [channel, setChannel] = useState<string>('all');
+  const [channelOptions, setChannelOptions] = useState<Array<{ value: string; label: string }>>([{ value: 'all', label: 'All channels' }]);
   const listContainerRef = React.useRef<HTMLDivElement | null>(null);
   const rowRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
   const rowObservers = React.useRef<Record<string, ResizeObserver>>({});
@@ -568,15 +570,28 @@ export const PromptVisualizer: React.FC = () => {
   const PAGE_SIZE = 20;
   const getRunKey = (run: Pick<RealPromptRun, 'session_id' | 'turn_index'>) => `${run.session_id}:${run.turn_index}`;
 
-  const loadRealRuns = async (agentOverride?: string, append = false) => {
+  const loadChannelsForAgent = async (a: string) => {
+    try {
+      const res = await fetch(`/api/channels-for-agent?agent=${encodeURIComponent(a)}`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setChannelOptions(data);
+        setChannel('all');
+      }
+    } catch { /* ignore */ }
+  };
+
+  const loadRealRuns = async (agentOverride?: string, channelOverride?: string, append = false) => {
     if (realLoadingRef.current) return;
     const a = agentOverride ?? agent;
+    const ch = channelOverride !== undefined ? channelOverride : channel;
     const currentOffset = append ? realRuns.length : 0;
     setShowReal(true);
     setRealLoading(true);
     realLoadingRef.current = true;
     try {
-      const res = await fetch(`/api/real-prompts?limit=${PAGE_SIZE}&offset=${currentOffset}&agent=${encodeURIComponent(a)}`, { credentials: 'include' });
+      const chParam = ch && ch !== 'all' ? `&channel=${encodeURIComponent(ch)}` : '';
+      const res = await fetch(`/api/real-prompts?limit=${PAGE_SIZE}&offset=${currentOffset}&agent=${encodeURIComponent(a)}${chParam}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         if (append) {
@@ -630,7 +645,7 @@ export const PromptVisualizer: React.FC = () => {
     loadAgents();
   }, []);
 
-  // Reset current view when agent changes, then load matching real runs
+  // Reset current view when agent changes, load channels + real runs
   React.useEffect(() => {
     setLoading(false);
     setResult(null);
@@ -643,8 +658,20 @@ export const PromptVisualizer: React.FC = () => {
     setDetailLoading({});
     setRowHeights({});
     setListScrollTop(0);
-    loadRealRuns(agent);
+    loadChannelsForAgent(agent).then(() => loadRealRuns(agent, 'all'));
   }, [agent]);
+
+  // Reload runs when channel changes
+  React.useEffect(() => {
+    setRealRuns([]);
+    setHasMore(true);
+    setExpandedRuns(new Set());
+    setRealRunDetails({});
+    setDetailLoading({});
+    setRowHeights({});
+    setListScrollTop(0);
+    loadRealRuns(agent, channel);
+  }, [channel]);
 
   React.useEffect(() => {
     const node = listContainerRef.current;
@@ -721,7 +748,7 @@ export const PromptVisualizer: React.FC = () => {
     const target = e.currentTarget;
     setListScrollTop(target.scrollTop);
     if (hasMore && !realLoading && target.scrollTop + target.clientHeight >= target.scrollHeight - 300) {
-      loadRealRuns(agent, true);
+      loadRealRuns(agent, channel, true);
     }
   };
 
@@ -755,13 +782,19 @@ export const PromptVisualizer: React.FC = () => {
             size="sm"
           />
           <Select
+            label={t('visualizer.channel', 'Channel')}
+            data={channelOptions}
+            value={channel}
+            onChange={v => setChannel(v || 'all')}
+            size="sm"
+          />
+          <Select
             label={t('visualizer.model', 'Model')}
             data={MODELS}
             value={model}
             onChange={v => setModel(v || 'claude-opus-4-6')}
             size="sm"
           />
-          <div />
         </SimpleGrid>
 
         <Stack gap="xs">
@@ -875,7 +908,7 @@ export const PromptVisualizer: React.FC = () => {
             variant="light"
             color="violet"
             size="xs"
-            onClick={() => loadRealRuns()}
+            onClick={() => loadRealRuns(agent, channel)}
             loading={realLoading}
           >
             {showReal ? t('visualizer.refresh', 'Refresh') : t('visualizer.loadRuns', 'Load')}
