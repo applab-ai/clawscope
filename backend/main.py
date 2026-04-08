@@ -19,7 +19,7 @@ from auth import verify_password, create_access_token, check_session
 import config
 
 # Initialize FastAPI
-CLAWSCOPE_VERSION = "1.0.2"
+CLAWSCOPE_VERSION = "1.0.3"
 app = FastAPI(title="Clawscope", version=CLAWSCOPE_VERSION)
 
 # CORS middleware

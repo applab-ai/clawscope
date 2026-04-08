@@ -4,6 +4,12 @@ All notable changes to Clawscope are documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [1.0.3] — 2026-04-08
+
+### Changed
+
+- Bumped release version to 1.0.3 to force a client-visible update after small Prompt Visualizer fixes
+
 ## [1.0.2] — 2026-04-07
 
 ### Fixed
