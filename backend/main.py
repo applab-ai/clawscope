@@ -2036,6 +2036,34 @@ async def health_check():
     return {"status": "healthy", "timestamp": datetime.utcnow()}
 
 
+def _discover_agent_ids() -> List[str]:
+    """Return agent ids discovered from the local OpenClaw agents directory."""
+    agents_base = config.get_agents_base()
+    if not os.path.isdir(agents_base):
+        return ["main"]
+
+    agent_ids: List[str] = []
+    for entry in os.scandir(agents_base):
+        if not entry.is_dir() or entry.name.startswith('.'):
+            continue
+        sessions_dir = os.path.join(entry.path, "sessions")
+        if os.path.isdir(sessions_dir):
+            agent_ids.append(entry.name)
+
+    if "main" in agent_ids:
+        agent_ids = ["main"] + sorted([a for a in agent_ids if a != "main"])
+    else:
+        agent_ids = sorted(agent_ids)
+
+    return agent_ids or ["main"]
+
+
+@app.get("/api/agents")
+async def get_agents(_=Depends(check_session)):
+    """Return available agent ids for this instance."""
+    return [{"value": agent_id, "label": agent_id} for agent_id in _discover_agent_ids()]
+
+
 # ─── Live Agents ───────────────────────────────────────────────
 
 from agent_collector import collect_agents, parse_session_file

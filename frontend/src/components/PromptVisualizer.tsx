@@ -523,16 +523,11 @@ export const PromptVisualizer: React.FC = () => {
   const [listScrollTop, setListScrollTop] = useState(0);
   const [listViewportHeight, setListViewportHeight] = useState(600);
   const [rowHeights, setRowHeights] = useState<Record<string, number>>({});
+  const [agentOptions, setAgentOptions] = useState<Array<{ value: string; label: string }>>([{ value: 'main', label: 'main' }]);
   const listContainerRef = React.useRef<HTMLDivElement | null>(null);
   const rowRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
   const rowObservers = React.useRef<Record<string, ResizeObserver>>({});
   const realLoadingRef = React.useRef(false);
-
-  const AGENTS = [
-    { value: 'main', label: 'Main' },
-    { value: 'worker', label: 'worker (Subagent)' },
-    { value: 'gclight', label: 'gclight (Light)' },
-  ];
 
   const MODELS = [
     { value: 'claude-opus-4-6', label: 'claude-opus-4-6 ($5/$25)' },
@@ -616,6 +611,24 @@ export const PromptVisualizer: React.FC = () => {
     } catch (_) { /* ignore */ }
     setDetailLoading(prev => ({ ...prev, [key]: false }));
   };
+
+  React.useEffect(() => {
+    const loadAgents = async () => {
+      try {
+        const res = await fetch('/api/agents', { credentials: 'include' });
+        if (!res.ok) return;
+        const data: Array<{ value: string; label: string }> = await res.json();
+        if (!data.length) return;
+        setAgentOptions(data);
+        if (!data.some(option => option.value === agent)) {
+          setAgent(data[0].value);
+        }
+      } catch (_) {
+        // ignore, keep fallback
+      }
+    };
+    loadAgents();
+  }, []);
 
   // Reset current view when agent changes, then load matching real runs
   React.useEffect(() => {
@@ -736,7 +749,7 @@ export const PromptVisualizer: React.FC = () => {
         <SimpleGrid cols={{ base: 1, sm: 3 }} mb="sm">
           <Select
             label={t('visualizer.agent', 'Agent')}
-            data={AGENTS}
+            data={agentOptions}
             value={agent}
             onChange={v => setAgent(v || 'main')}
             size="sm"

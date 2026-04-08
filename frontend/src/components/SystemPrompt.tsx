@@ -86,20 +86,29 @@ export const SystemPrompt: React.FC = () => {
   const [data, setData] = useState<SystemPromptData | null>(null);
   const [loading, setLoading] = useState(true);
   const [agent, setAgent] = useState('main');
+  const [agentOptions, setAgentOptions] = useState<Array<{ value: string; label: string }>>([{ value: 'main', label: 'main' }]);
   const [fileContents, setFileContents] = useState<Record<string, string>>({});
   const [fileLoading, setFileLoading] = useState<Record<string, boolean>>({});
   const [skillsXml, setSkillsXml] = useState('');
   const [skillsXmlLoading, setSkillsXmlLoading] = useState(false);
 
-  const agents = [
-    { value: 'main', label: 'main (Opus)' },
-    { value: 'worker', label: 'worker (Sonnet)' },
-    { value: 'research', label: 'research' },
-    { value: 'strategie', label: 'strategie' },
-    { value: 'qs', label: 'qs' },
-    { value: 'verlag', label: 'verlag' },
-    { value: 'gclight', label: 'gclight' },
-  ];
+  useEffect(() => {
+    const loadAgents = async () => {
+      try {
+        const resp = await fetch('/api/agents', { credentials: 'include' });
+        if (!resp.ok) return;
+        const data: Array<{ value: string; label: string }> = await resp.json();
+        if (!data.length) return;
+        setAgentOptions(data);
+        if (!data.some(option => option.value === agent)) {
+          setAgent(data[0].value);
+        }
+      } catch (e) {
+        console.error('Failed to fetch agents:', e);
+      }
+    };
+    loadAgents();
+  }, []);
 
   useEffect(() => {
     setFileContents({});
@@ -195,7 +204,7 @@ export const SystemPrompt: React.FC = () => {
         <Select
           value={agent}
           onChange={(v) => v && setAgent(v)}
-          data={agents}
+          data={agentOptions}
           w={200}
           label={t('systemPrompt.agent', 'Agent')}
         />
