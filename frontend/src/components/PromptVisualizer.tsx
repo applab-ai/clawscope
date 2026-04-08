@@ -568,6 +568,7 @@ export const PromptVisualizer: React.FC = () => {
   const totalCachedPct = result
     ? Math.round((result.cached_tokens / result.total_tokens) * 100)
     : 0;
+  const canVisualize = text.trim().length > 0;
 
   const PAGE_SIZE = 20;
   const getRunKey = (run: Pick<RealPromptRun, 'session_id' | 'turn_index'>) => `${run.session_id}:${run.turn_index}`;
@@ -616,8 +617,13 @@ export const PromptVisualizer: React.FC = () => {
     setDetailLoading(prev => ({ ...prev, [key]: false }));
   };
 
-  // Auto-load on mount and when agent changes
+  // Reset current view when agent changes, then load matching real runs
   React.useEffect(() => {
+    setLoading(false);
+    setResult(null);
+    setError(null);
+    setText('');
+    setRealRuns([]);
     setHasMore(true);
     setExpandedRuns(new Set());
     setRealRunDetails({});
@@ -761,6 +767,7 @@ export const PromptVisualizer: React.FC = () => {
             leftSection={<IconPlayerPlay size={16} />}
             onClick={() => runVisualize()}
             loading={loading}
+            disabled={!canVisualize}
             color="violet"
             size="sm"
             fullWidth
