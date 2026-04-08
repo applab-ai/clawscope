@@ -1772,6 +1772,107 @@ async def get_real_prompts(
     return runs
 
 
+@app.get("/api/real-prompts/search")
+async def search_real_prompts(
+    q: str,
+    agent: str = "main",
+    channel: Optional[str] = None,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    user=Depends(check_session)
+):
+    """Full-text search across user messages and assistant responses."""
+    if not q or len(q.strip()) < 2:
+        return []
+
+    search_term = f"%{q.strip()}%"
+    base = (
+        db.query(PromptTurn, PromptSession)
+        .join(PromptSession, PromptTurn.session_id == PromptSession.session_id)
+    )
+
+    # Agent filter
+    if agent == "main":
+        base = base.filter((PromptSession.agent_id == "main") | (PromptSession.agent_id.is_(None)))
+    else:
+        base = base.filter(PromptSession.agent_id == agent)
+
+    # Channel filter
+    if channel and channel != "all":
+        base = base.filter(PromptSession.user_category == channel)
+
+    # Text search: match in user_message, user_message_full, or assistant_response
+    base = base.filter(
+        (PromptTurn.user_message.ilike(search_term))
+        | (PromptTurn.user_message_full.ilike(search_term))
+        | (PromptTurn.assistant_response.ilike(search_term))
+    )
+
+    turns = base.order_by(desc(PromptTurn.started_at)).limit(limit).all()
+
+    if not turns:
+        return []
+
+    session_ids = sorted({turn.session_id for turn, _ in turns})
+    call_summaries = {
+        (row[0], row[1]): {
+            'call_count': row[2],
+            'cost_input': row[3] or 0,
+            'cost_output': row[4] or 0,
+            'cost_cache_read': row[5] or 0,
+            'cost_cache_write': row[6] or 0,
+        }
+        for row in (
+            db.query(
+                PromptApiCall.session_id,
+                PromptApiCall.turn_index,
+                func.count(PromptApiCall.id),
+                func.sum(PromptApiCall.cost_input),
+                func.sum(PromptApiCall.cost_output),
+                func.sum(PromptApiCall.cost_cache_read),
+                func.sum(PromptApiCall.cost_cache_write),
+            )
+            .filter(PromptApiCall.session_id.in_(session_ids))
+            .group_by(PromptApiCall.session_id, PromptApiCall.turn_index)
+            .all()
+        )
+    }
+
+    results = []
+    for turn, session in turns:
+        key = (turn.session_id, turn.turn_index)
+        ts = call_summaries.get(key, {})
+        total_tokens = (
+            (turn.total_tokens_input or 0)
+            + (turn.total_tokens_output or 0)
+            + (turn.total_tokens_cache_read or 0)
+            + (turn.total_tokens_cache_write or 0)
+        )
+        results.append({
+            'session_id': turn.session_id,
+            'turn_index': turn.turn_index,
+            'timestamp': turn.started_at.isoformat() if turn.started_at else None,
+            'model': turn.model or session.primary_model or 'unknown',
+            'user_message': turn.user_message or '',
+            'assistant_response': turn.assistant_response or '',
+            'api_calls': turn.api_calls or ts.get('call_count', 0),
+            'input_tokens': turn.total_tokens_input or 0,
+            'output_tokens': turn.total_tokens_output or 0,
+            'cache_read': turn.total_tokens_cache_read or 0,
+            'cache_write': turn.total_tokens_cache_write or 0,
+            'total_tokens': total_tokens,
+            'cost_total': round(turn.total_cost or 0, 6),
+            'cost_input': round(ts.get('cost_input', 0), 6),
+            'cost_output': round(ts.get('cost_output', 0), 6),
+            'cost_cache_read': round(ts.get('cost_cache_read', 0), 6),
+            'cost_cache_write': round(ts.get('cost_cache_write', 0), 6),
+            'cache_pct': round(((turn.total_tokens_cache_read or 0) / max(total_tokens, 1)) * 100, 1),
+            'user_category': session.user_category or 'unknown',
+        })
+
+    return results
+
+
 @app.get("/api/real-prompts/{session_id}/{turn_index}")
 async def get_real_prompt_detail(
     session_id: str,

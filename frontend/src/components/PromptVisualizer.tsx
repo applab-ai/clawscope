@@ -8,6 +8,7 @@ import {
   Badge,
   Select,
   Textarea,
+  TextInput,
   Button,
   Alert,
   Loader,
@@ -483,6 +484,7 @@ interface RealPromptRun {
   timestamp: string;
   model: string;
   user_message: string;
+  assistant_response?: string;
   api_calls: number;
   input_tokens: number;
   output_tokens: number;
@@ -495,7 +497,24 @@ interface RealPromptRun {
   cost_cache_read: number;
   cost_cache_write: number;
   cache_pct: number;
+  user_category?: string;
 }
+
+/* ---- Highlight helper ---- */
+const HighlightText: React.FC<{ text: string; highlight: string; color?: string }> = ({ text, highlight, color = 'var(--mantine-color-blue-4)' }) => {
+  if (!highlight || highlight.length < 2) return <span style={{ color }}>{text}</span>;
+  const escaped = highlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const parts = text.split(new RegExp(`(${escaped})`, 'gi'));
+  return (
+    <span style={{ color }}>
+      {parts.map((part, i) =>
+        part.toLowerCase() === highlight.toLowerCase()
+          ? <mark key={i} style={{ background: '#facc15', color: '#000', borderRadius: 2, padding: '0 1px' }}>{part}</mark>
+          : <span key={i}>{part}</span>
+      )}
+    </span>
+  );
+};
 
 interface RealPromptRunDetail {
   session_id: string;
@@ -526,6 +545,10 @@ export const PromptVisualizer: React.FC = () => {
   const [agentOptions, setAgentOptions] = useState<Array<{ value: string; label: string }>>([{ value: 'main', label: 'main' }]);
   const [channel, setChannel] = useState<string>('all');
   const [channelOptions, setChannelOptions] = useState<Array<{ value: string; label: string }>>([{ value: 'all', label: 'All channels' }]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<RealPromptRun[] | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const listContainerRef = React.useRef<HTMLDivElement | null>(null);
   const rowRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
   const rowObservers = React.useRef<Record<string, ResizeObserver>>({});
@@ -569,6 +592,33 @@ export const PromptVisualizer: React.FC = () => {
 
   const PAGE_SIZE = 20;
   const getRunKey = (run: Pick<RealPromptRun, 'session_id' | 'turn_index'>) => `${run.session_id}:${run.turn_index}`;
+
+  const runSearch = async (query: string) => {
+    if (!query || query.trim().length < 2) {
+      setSearchResults(null);
+      return;
+    }
+    setSearchLoading(true);
+    try {
+      const chParam = channel && channel !== 'all' ? `&channel=${encodeURIComponent(channel)}` : '';
+      const res = await fetch(`/api/real-prompts/search?q=${encodeURIComponent(query.trim())}&agent=${encodeURIComponent(agent)}&limit=50${chParam}`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setSearchResults(data);
+      }
+    } catch { /* ignore */ }
+    setSearchLoading(false);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (value.trim().length < 2) {
+      setSearchResults(null);
+      return;
+    }
+    searchTimerRef.current = setTimeout(() => runSearch(value), 400);
+  };
 
   const loadChannelsForAgent = async (a: string) => {
     try {
@@ -914,6 +964,96 @@ export const PromptVisualizer: React.FC = () => {
             {showReal ? t('visualizer.refresh', 'Refresh') : t('visualizer.loadRuns', 'Load')}
           </Button>
         </Group>
+
+        {/* Search */}
+        <TextInput
+          placeholder={t('visualizer.searchPlaceholder', 'Search messages & responses…')}
+          leftSection={<IconSearch size={16} />}
+          value={searchQuery}
+          onChange={(e) => handleSearchChange(e.currentTarget.value)}
+          size="sm"
+          mb="sm"
+          rightSection={searchLoading ? <Loader size="xs" /> : searchQuery ? <IconX size={14} style={{ cursor: 'pointer' }} onClick={() => handleSearchChange('')} /> : null}
+        />
+
+        {/* Search Results */}
+        {searchResults !== null && (
+          <Stack gap="xs" mb="md">
+            <Text size="xs" c="dimmed">{searchResults.length} {t('visualizer.searchResults', 'results')}</Text>
+            {searchResults.length === 0 && (
+              <Text size="sm" c="dimmed" ta="center" py="md">{t('visualizer.noSearchResults', 'No matches found')}</Text>
+            )}
+            <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+            {searchResults.map((run) => {
+              const runKey = `${run.session_id}-${run.turn_index}`;
+              const expanded = expandedRuns.has(runKey);
+              const detail = realRunDetails[runKey];
+              const toggleExpand = () => {
+                setExpandedRuns(prev => {
+                  const next = new Set(prev);
+                  if (next.has(runKey)) next.delete(runKey);
+                  else next.add(runKey);
+                  return next;
+                });
+                if (!expanded) loadRealRunDetail(run);
+              };
+              return (
+                <Card key={runKey} withBorder p="sm" mb="xs" style={{ cursor: 'pointer' }} onClick={toggleExpand}>
+                  <Group justify="space-between" wrap="nowrap">
+                    <Group gap={8}>
+                      <Text size="sm" c="dimmed" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                        {new Date(run.timestamp).toLocaleString('de-DE', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                      </Text>
+                      {run.user_category && <Badge size="xs" variant="light">{run.user_category}</Badge>}
+                    </Group>
+                    <Group gap={8} wrap="nowrap">
+                      <Badge size="sm" color={run.model.includes('opus') ? 'violet' : run.model.includes('sonnet') ? 'blue' : 'gray'} variant="filled">
+                        {run.model.replace('claude-', '').replace('moonshotai/', '')}
+                      </Badge>
+                      <Text size="sm" fw={700}>{fmtCost(run.cost_total)}</Text>
+                    </Group>
+                  </Group>
+                  {/* User message with highlighting */}
+                  <Paper p="xs" mt={4} bg="var(--mantine-color-dark-7)" style={{ borderRadius: 4 }}>
+                    <Text size="xs" style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }} lineClamp={expanded ? undefined : 3}>
+                      <HighlightText text={run.user_message || '—'} highlight={searchQuery} color="var(--mantine-color-blue-4)" />
+                    </Text>
+                  </Paper>
+                  {/* Assistant response snippet with highlighting */}
+                  {(run.assistant_response || (expanded && detail?.assistant_response)) && (
+                    <Paper p="xs" mt={4} bg="var(--mantine-color-dark-7)" style={{ borderRadius: 4 }}>
+                      <Text size="xs" style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }} lineClamp={expanded ? undefined : 3}>
+                        <HighlightText
+                          text={(expanded ? (detail?.assistant_response || run.assistant_response) : run.assistant_response) || '—'}
+                          highlight={searchQuery}
+                          color="var(--mantine-color-green-4)"
+                        />
+                      </Text>
+                    </Paper>
+                  )}
+                  <Collapse expanded={expanded}>
+                    {expanded && <Stack gap="xs" mt="xs" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                      <Group gap="xs" wrap="wrap">
+                        <Badge size="xs" variant="outline" color="gray">In: {run.input_tokens.toLocaleString()}</Badge>
+                        <Badge size="xs" variant="outline" color="green">Cache: {run.cache_read.toLocaleString()}</Badge>
+                        <Badge size="xs" variant="outline" color="gray">Out: {run.output_tokens.toLocaleString()}</Badge>
+                        <Badge size="xs" variant="outline" color="blue">Σ {run.total_tokens.toLocaleString()}</Badge>
+                      </Group>
+                      <Button
+                        size="xs" variant="gradient" gradient={{ from: 'violet', to: 'indigo', deg: 135 }}
+                        leftSection={<IconPlayerPlay size={14} />} fullWidth
+                        onClick={(e: React.MouseEvent) => { e.stopPropagation(); setText(run.user_message || ''); runVisualize(run.user_message || ''); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      >
+                        {t('visualizer.visualizePrompt')}
+                      </Button>
+                    </Stack>}
+                  </Collapse>
+                </Card>
+              );
+            })}
+            </div>
+          </Stack>
+        )}
 
         {showReal && realRuns.length > 0 && (
           <div
