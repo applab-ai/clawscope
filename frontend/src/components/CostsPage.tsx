@@ -35,14 +35,16 @@ export const CostsPage: React.FC<CostsPageProps> = ({ refreshTrigger }) => {
   }, [refreshTrigger, timeMode, monthFilter]);
 
   const fetchData = async () => {
+    const isRefresh = hasLoaded.current;
     try {
-      if (allUsage.length === 0) if (!hasLoaded.current) setLoading(true);
-      setError(null);
+      if (!isRefresh) setLoading(true);
+      if (!isRefresh) setError(null);
       const days = timeMode === 'month' ? 365 : Math.max(Number(timeMode), 1);
       const data = await api.getTokenUsage(days);
       setAllUsage(data);
+      setError(null);
     } catch (err) {
-      setError(t('common.error'));
+      if (!isRefresh) setError(t('common.error'));
     } finally {
       setLoading(false);
       hasLoaded.current = true;

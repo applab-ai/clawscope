@@ -49,13 +49,15 @@ export const SessionsList: React.FC<SessionsListProps> = ({ refreshTrigger }) =>
   }, [refreshTrigger]);
 
   const fetchSessions = async () => {
+    const isRefresh = hasLoaded.current;
     try {
-      if (sessions.length === 0) if (!hasLoaded.current) setLoading(true);
-      setError(null);
+      if (!isRefresh) setLoading(true);
+      if (!isRefresh) setError(null);
       const data = await api.getActiveSessions();
       setSessions(data);
+      setError(null);
     } catch (err) {
-      setError(t('sessions.loading'));
+      if (!isRefresh) setError(t('sessions.loading'));
       console.error('Error fetching sessions:', err);
     } finally {
       setLoading(false);

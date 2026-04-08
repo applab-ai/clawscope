@@ -85,13 +85,18 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ refreshTrigger }) 
   };
 
   const fetchStats = async () => {
+    const isRefresh = hasLoaded.current;
     try {
-      if (!stats) if (!hasLoaded.current) setLoading(true);
-      setError(null);
+      if (!isRefresh) setLoading(true);
+      if (!isRefresh) setError(null);
       const data = await api.getDashboardStats();
       setStats(data);
+      setError(null);
     } catch (err) {
-      setError(t('stats.loadingStats'));
+      // Only show error on initial load, silently ignore auto-refresh failures
+      if (!isRefresh) {
+        setError(t('stats.loadingStats'));
+      }
       console.error('Error fetching stats:', err);
     } finally {
       setLoading(false);

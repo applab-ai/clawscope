@@ -47,13 +47,15 @@ export const CronJobsList: React.FC<CronJobsListProps> = ({ refreshTrigger }) =>
   }, [refreshTrigger]);
 
   const fetchJobs = async () => {
+    const isRefresh = hasLoaded.current;
     try {
-      if (jobs.length === 0) if (!hasLoaded.current) setLoading(true);
-      setError(null);
+      if (!isRefresh) setLoading(true);
+      if (!isRefresh) setError(null);
       const data = await api.getCronJobs();
       setJobs(data);
+      setError(null);
     } catch (err) {
-      setError(t('cronJobs.loading'));
+      if (!isRefresh) setError(t('cronJobs.loading'));
       console.error('Error fetching cron jobs:', err);
     } finally {
       setLoading(false);
