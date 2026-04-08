@@ -47,6 +47,7 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ refreshTrigger }) 
     local_revision: string | null;
     remote: string | null;
     remote_revision: string | null;
+    status: 'up_to_date' | 'behind' | 'ahead' | 'diverged' | 'unknown';
     update_available: boolean;
   } | null>(null);
   const [updating, setUpdating] = useState(false);
@@ -221,21 +222,27 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ refreshTrigger }) 
               {versionInfo.local_revision && (
                 <Badge color="gray" variant="light" size="sm">#{versionInfo.local_revision}</Badge>
               )}
-              {versionInfo.update_available && versionInfo.remote && (
+              {versionInfo.status === 'behind' && versionInfo.remote && (
                 <Badge color="green" variant="filled" size="sm">v{versionInfo.remote} {t('version.available', 'available')}</Badge>
               )}
-              {versionInfo.update_available && versionInfo.remote_revision && versionInfo.remote_revision !== versionInfo.local_revision && (
+              {versionInfo.status === 'behind' && versionInfo.remote_revision && versionInfo.remote_revision !== versionInfo.local_revision && (
                 <Badge color="teal" variant="light" size="sm">#{versionInfo.remote_revision} {t('version.revisionAvailable', 'revision available')}</Badge>
               )}
-              {!versionInfo.update_available && versionInfo.remote && (
+              {versionInfo.status === 'up_to_date' && (
                 <Group gap={4}>
                   <IconCheck size={14} color="var(--mantine-color-green-6)" />
                   <Text size="xs" c="green">{t('version.upToDate', 'Up to date')}</Text>
                 </Group>
               )}
+              {versionInfo.status === 'ahead' && (
+                <Badge color="orange" variant="light" size="sm">{t('version.localAhead', 'local ahead')}</Badge>
+              )}
+              {versionInfo.status === 'diverged' && (
+                <Badge color="red" variant="light" size="sm">{t('version.diverged', 'diverged')}</Badge>
+              )}
             </Group>
             <Group gap="sm">
-              {versionInfo.update_available && (
+              {versionInfo.status === 'behind' && versionInfo.update_available && (
                 <Button
                   size="xs"
                   variant="gradient"

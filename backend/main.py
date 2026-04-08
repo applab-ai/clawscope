@@ -20,6 +20,8 @@ import config
 
 # Initialize FastAPI
 CLAWSCOPE_VERSION = "1.0.3"
+VERSION_CHECK_CACHE_TTL = timedelta(minutes=5)
+_version_check_cache = {"expires_at": None, "data": None}
 app = FastAPI(title="Clawscope", version=CLAWSCOPE_VERSION)
 
 # CORS middleware
@@ -2322,16 +2324,21 @@ async def get_api_key_labels(user=Depends(check_session)):
 
 # ─── Version & Update ──────────────────────────────────────────
 
-import urllib.request
-
 @app.get("/api/version")
 async def get_version(user=Depends(check_session)):
-    """Return local/remote version plus git revision and check for updates."""
+    """Return local/remote version plus revision and ahead/behind status."""
+    now = datetime.utcnow()
+    cached = _version_check_cache.get("data")
+    expires_at = _version_check_cache.get("expires_at")
+    if cached and expires_at and expires_at > now:
+        return cached
+
     result = {
         "local": CLAWSCOPE_VERSION,
         "local_revision": None,
         "remote": None,
         "remote_revision": None,
+        "status": "unknown",
         "update_available": False,
     }
 
@@ -2352,38 +2359,69 @@ async def get_version(user=Depends(check_session)):
 
     try:
         r = subprocess.run(
-            ["git", "ls-remote", "https://github.com/applab-ai/clawscope.git", "refs/heads/main"],
+            ["git", "fetch", "origin", "main", "--depth=1"],
             capture_output=True,
             text=True,
             cwd=project_dir,
-            timeout=10,
+            timeout=15,
         )
-        if r.returncode == 0 and r.stdout.strip():
-            result["remote_revision"] = r.stdout.split()[0][:7]
+        if r.returncode == 0:
+            r_rev = subprocess.run(
+                ["git", "rev-parse", "--short=7", "FETCH_HEAD"],
+                capture_output=True,
+                text=True,
+                cwd=project_dir,
+                timeout=5,
+            )
+            if r_rev.returncode == 0:
+                result["remote_revision"] = r_rev.stdout.strip() or None
+
+            r_ver = subprocess.run(
+                ["git", "show", "FETCH_HEAD:backend/main.py"],
+                capture_output=True,
+                text=True,
+                cwd=project_dir,
+                timeout=5,
+            )
+            if r_ver.returncode == 0:
+                for line in r_ver.stdout.splitlines():
+                    if line.startswith("CLAWSCOPE_VERSION"):
+                        result["remote"] = line.split('"')[1]
+                        break
+
+            r_cmp = subprocess.run(
+                ["git", "rev-list", "--left-right", "--count", "HEAD...FETCH_HEAD"],
+                capture_output=True,
+                text=True,
+                cwd=project_dir,
+                timeout=5,
+            )
+            if r_cmp.returncode == 0:
+                ahead_str, behind_str = r_cmp.stdout.strip().split()
+                ahead = int(ahead_str)
+                behind = int(behind_str)
+                if ahead == 0 and behind == 0:
+                    result["status"] = "up_to_date"
+                elif ahead > 0 and behind == 0:
+                    result["status"] = "ahead"
+                elif ahead == 0 and behind > 0:
+                    result["status"] = "behind"
+                    result["update_available"] = True
+                else:
+                    result["status"] = "diverged"
+                    result["update_available"] = True
     except Exception:
         pass
 
-    try:
-        req = urllib.request.Request(
-            "https://api.github.com/repos/applab-ai/clawscope/contents/backend/main.py?ref=main",
-            headers={"User-Agent": "Clawscope", "Accept": "application/vnd.github.raw+json"}
-        )
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            for line in resp.read().decode().splitlines():
-                if line.startswith("CLAWSCOPE_VERSION"):
-                    result["remote"] = line.split('"')[1]
-                    break
-    except Exception:
-        pass
+    if result["status"] == "unknown":
+        if result["remote"] and result["remote"] != result["local"]:
+            result["status"] = "behind"
+            result["update_available"] = True
+        elif result["remote_revision"] and result["local_revision"] and result["remote_revision"] == result["local_revision"]:
+            result["status"] = "up_to_date"
 
-    result["update_available"] = (
-        (result["remote"] is not None and result["remote"] != result["local"]) or
-        (
-            result["remote_revision"] is not None and
-            result["local_revision"] is not None and
-            result["remote_revision"] != result["local_revision"]
-        )
-    )
+    _version_check_cache["data"] = result
+    _version_check_cache["expires_at"] = now + VERSION_CHECK_CACHE_TTL
     return result
 
 
