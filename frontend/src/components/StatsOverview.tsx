@@ -247,7 +247,7 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ refreshTrigger }) 
               )}
             </Group>
             <Group gap="sm">
-              {versionInfo.status === 'behind' && versionInfo.update_available && (
+              {(versionInfo.status === 'behind' || versionInfo.status === 'diverged') && versionInfo.update_available && (
                 <Button
                   size="xs"
                   variant="gradient"

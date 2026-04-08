@@ -2462,7 +2462,7 @@ async def get_api_key_labels(user=Depends(check_session)):
 # ─── Version & Update ──────────────────────────────────────────
 
 @app.get("/api/version")
-async def get_version(user=Depends(check_session)):
+async def get_version():
     """Return local/remote version plus revision and ahead/behind status."""
     now = datetime.utcnow()
     cached = _version_check_cache.get("data")
@@ -2568,9 +2568,13 @@ async def run_update(user=Depends(check_session)):
     project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     steps = []
     try:
-        # git pull
-        r = subprocess.run(["git", "pull", "--ff-only"], capture_output=True, text=True, cwd=project_dir, timeout=30)
-        steps.append({"step": "git pull", "ok": r.returncode == 0, "output": (r.stdout + r.stderr).strip()[:500]})
+        # git fetch + reset to origin/main (handles diverged branches)
+        r = subprocess.run(["git", "fetch", "origin", "main"], capture_output=True, text=True, cwd=project_dir, timeout=30)
+        steps.append({"step": "git fetch", "ok": r.returncode == 0, "output": (r.stdout + r.stderr).strip()[:500]})
+        if r.returncode != 0:
+            return {"success": False, "steps": steps}
+        r = subprocess.run(["git", "reset", "--hard", "origin/main"], capture_output=True, text=True, cwd=project_dir, timeout=10)
+        steps.append({"step": "git reset", "ok": r.returncode == 0, "output": (r.stdout + r.stderr).strip()[:500]})
         if r.returncode != 0:
             return {"success": False, "steps": steps}
 
