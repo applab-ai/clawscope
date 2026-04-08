@@ -2326,10 +2326,44 @@ import urllib.request
 
 @app.get("/api/version")
 async def get_version(user=Depends(check_session)):
-    """Return local version and check GitHub for updates."""
-    result = {"local": CLAWSCOPE_VERSION, "remote": None, "update_available": False}
+    """Return local/remote version plus git revision and check for updates."""
+    result = {
+        "local": CLAWSCOPE_VERSION,
+        "local_revision": None,
+        "remote": None,
+        "remote_revision": None,
+        "update_available": False,
+    }
+
+    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
     try:
-        # Use GitHub API (60s cache) instead of raw.githubusercontent (5min cache)
+        r = subprocess.run(
+            ["git", "rev-parse", "--short=7", "HEAD"],
+            capture_output=True,
+            text=True,
+            cwd=project_dir,
+            timeout=5,
+        )
+        if r.returncode == 0:
+            result["local_revision"] = r.stdout.strip() or None
+    except Exception:
+        pass
+
+    try:
+        r = subprocess.run(
+            ["git", "ls-remote", "https://github.com/applab-ai/clawscope.git", "refs/heads/main"],
+            capture_output=True,
+            text=True,
+            cwd=project_dir,
+            timeout=10,
+        )
+        if r.returncode == 0 and r.stdout.strip():
+            result["remote_revision"] = r.stdout.split()[0][:7]
+    except Exception:
+        pass
+
+    try:
         req = urllib.request.Request(
             "https://api.github.com/repos/applab-ai/clawscope/contents/backend/main.py?ref=main",
             headers={"User-Agent": "Clawscope", "Accept": "application/vnd.github.raw+json"}
@@ -2337,12 +2371,19 @@ async def get_version(user=Depends(check_session)):
         with urllib.request.urlopen(req, timeout=5) as resp:
             for line in resp.read().decode().splitlines():
                 if line.startswith("CLAWSCOPE_VERSION"):
-                    remote = line.split('"')[1]
-                    result["remote"] = remote
-                    result["update_available"] = remote != CLAWSCOPE_VERSION
+                    result["remote"] = line.split('"')[1]
                     break
     except Exception:
         pass
+
+    result["update_available"] = (
+        (result["remote"] is not None and result["remote"] != result["local"]) or
+        (
+            result["remote_revision"] is not None and
+            result["local_revision"] is not None and
+            result["remote_revision"] != result["local_revision"]
+        )
+    )
     return result
 
 

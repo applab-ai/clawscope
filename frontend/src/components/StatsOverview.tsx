@@ -42,7 +42,13 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ refreshTrigger }) 
   const [loading, setLoading] = useState(true);
   const hasLoaded = useRef(false);
   const [error, setError] = useState<string | null>(null);
-  const [versionInfo, setVersionInfo] = useState<{ local: string; remote: string | null; update_available: boolean } | null>(null);
+  const [versionInfo, setVersionInfo] = useState<{
+    local: string;
+    local_revision: string | null;
+    remote: string | null;
+    remote_revision: string | null;
+    update_available: boolean;
+  } | null>(null);
   const [updating, setUpdating] = useState(false);
   const [updateResult, setUpdateResult] = useState<{ success: boolean; steps: any[] } | null>(null);
 
@@ -212,8 +218,14 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ refreshTrigger }) 
             <Group gap="sm">
               <Text size="sm" c="dimmed">Clawscope</Text>
               <Badge color="blue" variant="light" size="lg">v{versionInfo.local}</Badge>
+              {versionInfo.local_revision && (
+                <Badge color="gray" variant="light" size="sm">#{versionInfo.local_revision}</Badge>
+              )}
               {versionInfo.update_available && versionInfo.remote && (
                 <Badge color="green" variant="filled" size="sm">v{versionInfo.remote} {t('version.available', 'available')}</Badge>
+              )}
+              {versionInfo.update_available && versionInfo.remote_revision && versionInfo.remote_revision !== versionInfo.local_revision && (
+                <Badge color="teal" variant="light" size="sm">#{versionInfo.remote_revision} {t('version.revisionAvailable', 'revision available')}</Badge>
               )}
               {!versionInfo.update_available && versionInfo.remote && (
                 <Group gap={4}>
