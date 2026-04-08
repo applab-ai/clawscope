@@ -593,15 +593,17 @@ export const PromptVisualizer: React.FC = () => {
   const PAGE_SIZE = 20;
   const getRunKey = (run: Pick<RealPromptRun, 'session_id' | 'turn_index'>) => `${run.session_id}:${run.turn_index}`;
 
-  const runSearch = async (query: string) => {
+  const runSearch = async (query: string, agentOverride?: string, channelOverride?: string) => {
     if (!query || query.trim().length < 2) {
       setSearchResults(null);
       return;
     }
+    const a = agentOverride ?? agent;
+    const ch = channelOverride !== undefined ? channelOverride : channel;
     setSearchLoading(true);
     try {
-      const chParam = channel && channel !== 'all' ? `&channel=${encodeURIComponent(channel)}` : '';
-      const res = await fetch(`/api/real-prompts/search?q=${encodeURIComponent(query.trim())}&agent=${encodeURIComponent(agent)}&limit=50${chParam}`, { credentials: 'include' });
+      const chParam = ch && ch !== 'all' ? `&channel=${encodeURIComponent(ch)}` : '';
+      const res = await fetch(`/api/real-prompts/search?q=${encodeURIComponent(query.trim())}&agent=${encodeURIComponent(a)}&limit=50${chParam}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setSearchResults(data);
@@ -708,7 +710,13 @@ export const PromptVisualizer: React.FC = () => {
     setDetailLoading({});
     setRowHeights({});
     setListScrollTop(0);
-    loadChannelsForAgent(agent).then(() => loadRealRuns(agent, 'all'));
+    loadChannelsForAgent(agent).then(() => {
+      if (searchQuery.trim().length >= 2) {
+        runSearch(searchQuery, agent, 'all');
+      } else {
+        loadRealRuns(agent, 'all');
+      }
+    });
   }, [agent]);
 
   // Reload runs when channel changes
@@ -720,7 +728,11 @@ export const PromptVisualizer: React.FC = () => {
     setDetailLoading({});
     setRowHeights({});
     setListScrollTop(0);
-    loadRealRuns(agent, channel);
+    if (searchQuery.trim().length >= 2) {
+      runSearch(searchQuery, agent, channel);
+    } else {
+      loadRealRuns(agent, channel);
+    }
   }, [channel]);
 
   React.useEffect(() => {
