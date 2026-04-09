@@ -2597,10 +2597,32 @@ async def run_update(user=Depends(check_session)):
                              env={**os.environ, "PATH": f"/opt/homebrew/bin:/usr/local/bin:{os.environ.get('PATH', '')}" })
             steps.append({"step": "npm build", "ok": r.returncode == 0, "output": (r.stdout + r.stderr).strip()[:300]})
 
-        # Restart via launchctl
+        # Restart: try launchctl first, fall back to start.sh, then direct uvicorn restart
+        restarted = False
         uid = os.getuid()
-        r = subprocess.run(["launchctl", "kickstart", "-k", f"gui/{uid}/ai.openclaw.clawscope"], capture_output=True, text=True, timeout=10)
-        steps.append({"step": "restart", "ok": r.returncode == 0, "output": (r.stdout + r.stderr).strip()[:200]})
+        # Try launchctl (macOS LaunchAgent)
+        try:
+            r = subprocess.run(["launchctl", "kickstart", "-k", f"gui/{uid}/ai.openclaw.clawscope"], capture_output=True, text=True, timeout=5)
+            if r.returncode == 0:
+                steps.append({"step": "restart", "ok": True, "output": "launchctl kickstart OK"})
+                restarted = True
+        except Exception:
+            pass
+
+        # Try start.sh
+        if not restarted:
+            start_sh = os.path.join(project_dir, "start.sh")
+            if os.path.exists(start_sh):
+                try:
+                    r = subprocess.Popen(["bash", start_sh], cwd=project_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    steps.append({"step": "restart", "ok": True, "output": f"start.sh launched (pid {r.pid})"})
+                    restarted = True
+                except Exception as e:
+                    steps.append({"step": "restart", "ok": False, "output": f"start.sh failed: {e}"})
+
+        # Last resort: tell user to restart manually
+        if not restarted:
+            steps.append({"step": "restart", "ok": False, "output": "No restart method available — please restart backend manually"})
 
         return {"success": all(s["ok"] for s in steps), "steps": steps}
     except Exception as e:
