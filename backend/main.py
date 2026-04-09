@@ -293,7 +293,7 @@ async def get_cron_job_runs(job_name: str, user=Depends(check_session)):
         )
         if result.returncode != 0:
             return {"runs": [], "error": "Failed to list cron jobs"}
-        data = _json.loads(result.stdout)
+        data = json.loads(result.stdout)
         jobs = data.get('jobs', data) if isinstance(data, dict) else data
         
         job_id = None
@@ -314,7 +314,7 @@ async def get_cron_job_runs(job_name: str, user=Depends(check_session)):
         )
         runs = []
         if result2.returncode == 0 and result2.stdout.strip():
-            runs_data = _json.loads(result2.stdout)
+            runs_data = json.loads(result2.stdout)
             runs = runs_data.get('entries', runs_data) if isinstance(runs_data, dict) else runs_data
         
         return {
@@ -667,7 +667,7 @@ def _resolve_agent_workspace(agent: str):
     if os.path.exists(agent_config_path):
         try:
             with open(agent_config_path) as _f:
-                ac = _json.load(_f)
+                ac = json.load(_f)
                 if ac.get('workspace'):
                     workspace = os.path.expanduser(ac['workspace'])
         except Exception:
@@ -800,11 +800,11 @@ def _build_system_prompt_data(agent: str):
     }
     try:
         # Read plugins directly from openclaw.json config
-        openclaw_home = _os.path.expanduser('~/.openclaw')
-        openclaw_config_path = _os.path.join(openclaw_home, 'openclaw.json')
-        if _os.path.exists(openclaw_config_path):
+        openclaw_home = os.path.expanduser('~/.openclaw')
+        openclaw_config_path = os.path.join(openclaw_home, 'openclaw.json')
+        if os.path.exists(openclaw_config_path):
             with open(openclaw_config_path) as _ocf:
-                openclaw_cfg = _json.load(_ocf)
+                openclaw_cfg = json.load(_ocf)
             plugins_cfg = openclaw_cfg.get('plugins', {})
             entries = plugins_cfg.get('entries', {})
             slots = plugins_cfg.get('slots', {})
@@ -839,11 +839,11 @@ def _build_system_prompt_data(agent: str):
                 lcm_entry = entries[context_engine]
                 lcm_config = lcm_entry.get('config', {}) if isinstance(lcm_entry, dict) else {}
                 lcm_install = installs.get(context_engine, {})
-                lcm_db_path = _os.path.join(openclaw_home, 'lcm.db')
+                lcm_db_path = os.path.join(openclaw_home, 'lcm.db')
                 compression_info.update({
                     'active': lcm_entry.get('enabled', False) if isinstance(lcm_entry, dict) else False,
                     'plugin_slot': context_engine,
-                    'db_path': lcm_db_path if _os.path.exists(lcm_db_path) else None,
+                    'db_path': lcm_db_path if os.path.exists(lcm_db_path) else None,
                     'threshold': lcm_config.get('threshold'),
                     'summarizer_model': lcm_config.get('summaryModel'),
                     'expansion_model': lcm_config.get('expansionModel'),
@@ -1030,7 +1030,7 @@ async def simulate_prompt(body: dict, user=Depends(check_session)):
         })
 
     # 4. Inbound Meta (dynamic per message)
-    inbound_meta = _json.dumps({
+    inbound_meta = json.dumps({
         'schema': 'openclaw.inbound_meta.v1',
         'chat_id': 'telegram:XXXXXXXXXX',
         'account_id': 'default',
