@@ -85,6 +85,14 @@ def process_session_file(file_path, session_id, agent_id, user_category, db):
             return 0, 0
         return 0, 0
     
+    # Detect session reset: file got smaller → JSONL was rewritten
+    session_was_reset = existing_session and file_size < (existing_session.last_parsed_bytes or 0)
+    if session_was_reset:
+        # Delete old turns and API calls — they belong to the previous session content
+        db.query(PromptApiCall).filter(PromptApiCall.session_id == session_id).delete()
+        db.query(PromptTurn).filter(PromptTurn.session_id == session_id).delete()
+        db.flush()
+
     # Parse session file
     turns = []  # List of (turn_index, user_message, user_ts, assistant_calls)
     current_turn = None
@@ -96,9 +104,9 @@ def process_session_file(file_path, session_id, agent_id, user_category, db):
         with open(file_path, 'r') as f:
             lines = f.readlines()
             
-        # Skip already processed lines if incremental
+        # Skip already processed lines if incremental (but NOT after a reset)
         start_line = 0
-        if existing_session and existing_session.last_parsed_bytes > 0:
+        if existing_session and existing_session.last_parsed_bytes > 0 and not session_was_reset:
             # Estimate line to start from based on average line size
             avg_line_size = file_size / len(lines) if len(lines) > 0 else 100
             start_line = max(0, int(existing_session.last_parsed_bytes / avg_line_size) - 10)  # Buffer
