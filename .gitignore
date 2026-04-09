@@ -18,7 +18,7 @@ data/*.db
 # Node/Frontend
 node_modules/
 frontend/node_modules/
-frontend/dist/
+# frontend/dist/ — kept in repo so git pull delivers a working build
 
 # Config (contains secrets)
 config.yaml
