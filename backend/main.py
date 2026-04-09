@@ -842,8 +842,15 @@ def _build_system_prompt_data(agent: str):
                     'version': lcm_install.get('version'),
                     'effect_on_context': 'Older context can be compacted into searchable summaries. Recall may expand from compressed memory instead of always sending raw prior turns directly.',
                 })
-    except Exception:
-        pass
+    except Exception as _plugin_err:
+        import traceback as _tb
+        plugins_info.append({
+            'name': '_error',
+            'type': 'debug',
+            'enabled': False,
+            'version': None,
+            'effect_on_prompt': f'Plugin detection failed: {_plugin_err} — {_tb.format_exc()[-300:]}',
+        })
 
     runtime_sections = [
         'Tool availability & policies',
@@ -885,6 +892,32 @@ def _build_system_prompt_data(agent: str):
     }
     SYSTEM_PROMPT_CACHE[cache_key] = {'ts': _time.time(), 'data': data}
     return data
+
+
+@app.get("/api/debug/plugins-raw")
+async def debug_plugins_raw(user=Depends(check_session)):
+    """Debug: show raw plugins section from openclaw.json"""
+    import os, json
+    openclaw_home = os.path.expanduser('~/.openclaw')
+    config_path = os.path.join(openclaw_home, 'openclaw.json')
+    result = {'config_path': config_path, 'exists': os.path.exists(config_path)}
+    if result['exists']:
+        try:
+            with open(config_path) as f:
+                cfg = json.load(f)
+            plugins = cfg.get('plugins', {})
+            result['plugins_keys'] = list(plugins.keys())
+            result['entries_keys'] = list(plugins.get('entries', {}).keys())
+            result['slots'] = plugins.get('slots', {})
+            result['installs_keys'] = list(plugins.get('installs', {}).keys())
+            # Show first entry structure as sample
+            entries = plugins.get('entries', {})
+            if entries:
+                first_key = list(entries.keys())[0]
+                result['sample_entry'] = {first_key: entries[first_key]}
+        except Exception as e:
+            result['error'] = str(e)
+    return result
 
 
 @app.get("/api/system-prompt")
