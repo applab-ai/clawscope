@@ -825,8 +825,16 @@ def _build_system_prompt_data(agent: str):
                 }
                 plugins_info.append(plugin_entry)
 
-            # LCM / compression detection via contextEngine slot
+            # LCM / compression detection
+            # Method 1: via contextEngine slot (explicit config)
+            # Method 2: direct lookup for known LCM plugins in entries
             context_engine = slots.get('contextEngine')
+            if not context_engine:
+                # Fallback: look for lossless-claw or any *lossless* entry
+                for ename in entries:
+                    if 'lossless' in ename.lower():
+                        context_engine = ename
+                        break
             if context_engine and context_engine in entries:
                 lcm_entry = entries[context_engine]
                 lcm_config = lcm_entry.get('config', {}) if isinstance(lcm_entry, dict) else {}
