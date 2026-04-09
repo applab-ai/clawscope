@@ -799,43 +799,49 @@ def _build_system_prompt_data(agent: str):
         'effect_on_context': 'Standard prompt assembly without additional compression metadata detected.',
     }
     try:
-        audit = _sp.run(['openclaw', 'security', 'audit', '--json'], capture_output=True, text=True, timeout=20)
-        audit_json = _json.loads(audit.stdout or '{}')
-        findings = audit_json.get('findings', []) or []
+        # Read plugins directly from openclaw.json config
+        openclaw_home = _os.path.expanduser('~/.openclaw')
+        openclaw_config_path = _os.path.join(openclaw_home, 'openclaw.json')
+        if _os.path.exists(openclaw_config_path):
+            with open(openclaw_config_path) as _ocf:
+                openclaw_cfg = _json.load(_ocf)
+            plugins_cfg = openclaw_cfg.get('plugins', {})
+            entries = plugins_cfg.get('entries', {})
+            slots = plugins_cfg.get('slots', {})
+            installs = plugins_cfg.get('installs', {})
 
-        enabled_plugins = []
-        for finding in findings:
-            check_id = finding.get('checkId', '')
-            detail = finding.get('detail', '') or ''
-            if check_id == 'plugins.extensions_no_allowlist':
-                m = _re.search(r'Found (\d+) extension\(s\)', detail)
-                if m:
-                    extension_count = int(m.group(1))
-            if check_id == 'plugins.tools_reachable_permissive_policy':
-                m = _re.search(r'Enabled extension plugins:\s*([^\n]+)', detail)
-                if m:
-                    enabled_plugins = [p.strip() for p in m.group(1).split(',') if p.strip()]
+            # Enumerate all enabled plugins
+            for name, entry in entries.items():
+                if not isinstance(entry, dict):
+                    continue
+                is_enabled = entry.get('enabled', False)
+                install_info = installs.get(name, {})
+                plugin_entry = {
+                    'name': name,
+                    'type': 'extension' if name in installs else 'builtin',
+                    'enabled': is_enabled,
+                    'version': install_info.get('version'),
+                    'effect_on_prompt': 'Can change runtime behavior, tool surface, retrieval, or compression handling beyond plain workspace + skill assembly.',
+                }
+                plugins_info.append(plugin_entry)
 
-        for name in enabled_plugins:
-            plugins_info.append({
-                'name': name,
-                'type': 'extension',
-                'enabled': True,
-                'effect_on_prompt': 'Can change runtime behavior, tool surface, retrieval, or compression handling beyond plain workspace + skill assembly.',
-            })
-
-        stderr = audit.stderr or ''
-        lcm_loaded = _re.search(r'\[plugins\] \[lcm\] Plugin loaded \(enabled=(true|false), db=([^,]+), threshold=([^\)]+)\)', stderr)
-        lcm_model = _re.search(r'\[plugins\] \[lcm\] Compaction summarization model:\s*(.+)', stderr)
-        if lcm_loaded:
-            compression_info.update({
-                'active': lcm_loaded.group(1) == 'true',
-                'plugin_slot': 'lcm',
-                'db_path': lcm_loaded.group(2).strip(),
-                'threshold': lcm_loaded.group(3).strip(),
-                'summarizer_model': lcm_model.group(1).strip() if lcm_model else None,
-                'effect_on_context': 'Older context can be compacted into searchable summaries. Recall may expand from compressed memory instead of always sending raw prior turns directly.',
-            })
+            # LCM / compression detection via contextEngine slot
+            context_engine = slots.get('contextEngine')
+            if context_engine and context_engine in entries:
+                lcm_entry = entries[context_engine]
+                lcm_config = lcm_entry.get('config', {}) if isinstance(lcm_entry, dict) else {}
+                lcm_install = installs.get(context_engine, {})
+                lcm_db_path = _os.path.join(openclaw_home, 'lcm.db')
+                compression_info.update({
+                    'active': lcm_entry.get('enabled', False) if isinstance(lcm_entry, dict) else False,
+                    'plugin_slot': context_engine,
+                    'db_path': lcm_db_path if _os.path.exists(lcm_db_path) else None,
+                    'threshold': lcm_config.get('threshold'),
+                    'summarizer_model': lcm_config.get('summaryModel'),
+                    'expansion_model': lcm_config.get('expansionModel'),
+                    'version': lcm_install.get('version'),
+                    'effect_on_context': 'Older context can be compacted into searchable summaries. Recall may expand from compressed memory instead of always sending raw prior turns directly.',
+                })
     except Exception:
         pass
 
