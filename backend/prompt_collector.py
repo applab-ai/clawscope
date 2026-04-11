@@ -77,13 +77,29 @@ def process_session_file(file_path, session_id, agent_id, user_category, db):
     file_size = os.path.getsize(file_path)
     
     if existing_session and existing_session.last_parsed_bytes == file_size:
-        # File hasn't changed, but backfill agent/category metadata if needed.
-        if existing_session.agent_id != agent_id or existing_session.user_category != user_category:
-            existing_session.agent_id = agent_id
-            existing_session.user_category = user_category
+        # File hasn't changed — but verify integrity: does turn count match DB?
+        actual_turns = db.query(PromptTurn).filter(PromptTurn.session_id == session_id).count()
+        if actual_turns > 0 and existing_session.total_turns != actual_turns:
+            # Metadata out of sync — fix it
+            existing_session.total_turns = actual_turns
             existing_session.updated_at = datetime.utcnow()
+        
+        # If we have bytes tracked but suspiciously few turns, re-parse
+        if actual_turns < 5 and file_size > 100000:
+            # Something went wrong last time — force re-parse
+            print(f"  Integrity check: {session_id[:12]} has {actual_turns} turns but {file_size} bytes — forcing re-parse")
+            db.query(PromptApiCall).filter(PromptApiCall.session_id == session_id).delete()
+            db.query(PromptTurn).filter(PromptTurn.session_id == session_id).delete()
+            db.flush()
+            existing_session.last_parsed_bytes = 0
+            # Fall through to re-parse
+        else:
+            # Backfill agent/category metadata if needed
+            if existing_session.agent_id != agent_id or existing_session.user_category != user_category:
+                existing_session.agent_id = agent_id
+                existing_session.user_category = user_category
+                existing_session.updated_at = datetime.utcnow()
             return 0, 0
-        return 0, 0
     
     # Detect session reset: file got smaller → JSONL was rewritten
     session_was_reset = existing_session and file_size < (existing_session.last_parsed_bytes or 0)
