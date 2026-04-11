@@ -4,6 +4,36 @@ All notable changes to Clawscope are documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [1.2.0] — 2026-04-11
+
+### Fixed
+
+- **Prompt collector integrity check** — detects stale session metadata (e.g. after `/new` resets) and forces re-parse when turn count is suspiciously low relative to file size
+- **Session metadata sync** — `total_turns` in session record now auto-corrects when it drifts from actual DB turn count
+- Bernds current session fully re-indexed (850 turns, 2845 API calls recovered)
+
+### Changed
+
+- Collector no longer silently skips large session files with broken metadata
+- Integrity threshold: files >100KB with <5 indexed turns trigger automatic re-parse
+
+## [1.1.0] — 2026-04-09
+
+### Added
+
+- **Dynamic agent discovery** — `/api/agents` endpoint scans agent directories instead of hardcoded list
+- **Git-based version check** — replaces GitHub API compare with local `git rev-list` (avoids rate limits)
+- **Channel filter** — filter Real Prompt Runs by user category (bernd/frank/crons/subagents)
+- **Full-text search** — search messages & responses with debounced input and yellow match highlighting
+- Frontend dist committed to repo (no more stale UI after `git reset --hard`)
+
+### Fixed
+
+- Search re-triggers correctly when agent/channel changes while query is active
+- Plugin detection reads `openclaw.json` directly instead of parsing CLI stderr
+- Update button works for both "behind" and "diverged" git states
+- Transient fetch errors during backend restart silently suppressed on auto-refresh
+
 ## [1.0.3] — 2026-04-08
 
 ### Changed
