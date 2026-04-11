@@ -26,6 +26,9 @@ import {
   IconDownload,
   IconCheck,
   IconRefresh,
+  IconPlayerPlay,
+  IconPlayerStop,
+  IconRotateClockwise,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -52,11 +55,48 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ refreshTrigger }) 
   } | null>(null);
   const [updating, setUpdating] = useState(false);
   const [updateResult, setUpdateResult] = useState<{ success: boolean; steps: any[] } | null>(null);
+  const [backendAction, setBackendAction] = useState<string | null>(null);
+  const [backendResult, setBackendResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [backendStatus, setBackendStatus] = useState<{ pid: number; uptime_seconds: number | null; managed_by_launchd: boolean } | null>(null);
 
   useEffect(() => {
     fetchStats();
     fetchVersion();
+    fetchBackendStatus();
   }, [refreshTrigger]);
+
+  const fetchBackendStatus = async () => {
+    try {
+      const resp = await api.rawFetch('/api/backend/status');
+      const data = await resp.json();
+      setBackendStatus(data);
+    } catch { /* ignore */ }
+  };
+
+  const backendControl = async (action: 'restart' | 'stop' | 'start') => {
+    setBackendAction(action);
+    setBackendResult(null);
+    try {
+      const resp = await api.rawFetch(`/api/backend/${action}`, { method: 'POST' });
+      const data = await resp.json();
+      setBackendResult(data);
+      if (data.success && action !== 'stop') {
+        // Backend restarting — wait then reload
+        setTimeout(() => window.location.reload(), 4000);
+      }
+    } catch (e) {
+      setBackendResult({ success: false, message: String(e) });
+    } finally {
+      setBackendAction(null);
+    }
+  };
+
+  const formatUptime = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+  };
 
   const fetchVersion = async () => {
     try {
@@ -264,6 +304,61 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ refreshTrigger }) 
               </Button>
             </Group>
           </Group>
+
+          {/* Backend Controls */}
+          <Group gap="sm" mt="sm" pt="sm" style={{ borderTop: '1px solid var(--mantine-color-dark-4)' }}>
+            <Group gap="xs">
+              <Text size="xs" c="dimmed">Backend:</Text>
+              {backendStatus && (
+                <>
+                  <Badge color="green" variant="dot" size="sm">PID {backendStatus.pid}</Badge>
+                  {backendStatus.uptime_seconds != null && (
+                    <Text size="xs" c="dimmed">Uptime: {formatUptime(backendStatus.uptime_seconds)}</Text>
+                  )}
+                </>
+              )}
+            </Group>
+            <Group gap="xs" ml="auto">
+              <Button
+                size="xs"
+                variant="light"
+                color="blue"
+                leftSection={<IconRotateClockwise size={14} />}
+                loading={backendAction === 'restart'}
+                onClick={() => backendControl('restart')}
+              >
+                Restart
+              </Button>
+              <Button
+                size="xs"
+                variant="light"
+                color="red"
+                leftSection={<IconPlayerStop size={14} />}
+                loading={backendAction === 'stop'}
+                onClick={() => backendControl('stop')}
+              >
+                Stop
+              </Button>
+              <Button
+                size="xs"
+                variant="light"
+                color="green"
+                leftSection={<IconPlayerPlay size={14} />}
+                loading={backendAction === 'start'}
+                onClick={() => backendControl('start')}
+              >
+                Start
+              </Button>
+            </Group>
+          </Group>
+          {backendResult && (
+            <Group gap="xs" mt="xs">
+              <Badge color={backendResult.success ? 'green' : 'red'} size="xs" variant="filled">
+                {backendResult.success ? '✓' : '✗'}
+              </Badge>
+              <Text size="xs" c="dimmed">{backendResult.message}</Text>
+            </Group>
+          )}
           {updateResult && (
             <Stack gap="xs" mt="sm">
               {updateResult.steps.map((s: any, i: number) => (

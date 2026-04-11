@@ -4,6 +4,14 @@ All notable changes to Clawscope are documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [1.3.0] — 2026-04-11
+
+### Added
+
+- **Backend control panel** — Start, Stop, Restart buttons in Overview page with live PID + uptime display
+- Backend API endpoints: `/api/backend/status`, `/api/backend/restart`, `/api/backend/stop`, `/api/backend/start`
+- LaunchAgent-aware lifecycle management (launchctl kickstart/stop/bootstrap with start.sh fallback)
+
 ## [1.2.0] — 2026-04-11
 
 ### Fixed

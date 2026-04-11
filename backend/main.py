@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from datetime import datetime, timedelta
 import os
+import time
 import json
 import psutil
 import shutil
@@ -19,7 +20,7 @@ from auth import verify_password, create_access_token, check_session
 import config
 
 # Initialize FastAPI
-CLAWSCOPE_VERSION = "1.2.0"
+CLAWSCOPE_VERSION = "1.3.0"
 VERSION_CHECK_CACHE_TTL = timedelta(minutes=5)
 _version_check_cache = {"expires_at": None, "data": None}
 app = FastAPI(title="Clawscope", version=CLAWSCOPE_VERSION)
@@ -2669,6 +2670,122 @@ async def run_update(user=Depends(check_session)):
     except Exception as e:
         steps.append({"step": "error", "ok": False, "output": str(e)})
         return {"success": False, "steps": steps}
+
+
+# --- Backend lifecycle control ---
+
+@app.get("/api/backend/status")
+async def backend_status(user=Depends(check_session)):
+    """Return backend process status."""
+    import psutil
+    uid = os.getuid()
+    label = "ai.openclaw.clawscope"
+    pid = os.getpid()
+    uptime_seconds = None
+    try:
+        proc = psutil.Process(pid)
+        uptime_seconds = int(time.time() - proc.create_time())
+    except Exception:
+        pass
+    
+    # Check if managed by launchd
+    managed_by_launchd = False
+    try:
+        r = subprocess.run(["launchctl", "list", label], capture_output=True, text=True, timeout=3)
+        managed_by_launchd = r.returncode == 0
+    except Exception:
+        pass
+    
+    return {
+        "running": True,
+        "pid": pid,
+        "uptime_seconds": uptime_seconds,
+        "managed_by_launchd": managed_by_launchd,
+        "version": CLAWSCOPE_VERSION,
+    }
+
+
+@app.post("/api/backend/restart")
+async def backend_restart(user=Depends(check_session)):
+    """Restart the backend process."""
+    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    uid = os.getuid()
+    label = "ai.openclaw.clawscope"
+    
+    # Try launchctl first
+    try:
+        r = subprocess.run(["launchctl", "kickstart", "-k", f"gui/{uid}/{label}"], capture_output=True, text=True, timeout=5)
+        if r.returncode == 0:
+            return {"success": True, "method": "launchctl", "message": "Restarting via launchctl..."}
+    except Exception:
+        pass
+    
+    # Fallback: start.sh (kills old process, starts new one)
+    start_sh = os.path.join(project_dir, "start.sh")
+    if os.path.exists(start_sh):
+        try:
+            subprocess.Popen(["bash", start_sh], cwd=project_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return {"success": True, "method": "start.sh", "message": "Restarting via start.sh..."}
+        except Exception as e:
+            return {"success": False, "method": "start.sh", "message": str(e)}
+    
+    return {"success": False, "method": "none", "message": "No restart method available"}
+
+
+@app.post("/api/backend/stop")
+async def backend_stop(user=Depends(check_session)):
+    """Stop the backend process."""
+    uid = os.getuid()
+    label = "ai.openclaw.clawscope"
+    
+    # Try launchctl stop (won't auto-restart if KeepAlive is false)
+    try:
+        r = subprocess.run(["launchctl", "stop", f"gui/{uid}/{label}"], capture_output=True, text=True, timeout=5)
+        if r.returncode == 0:
+            # Also unload to prevent auto-restart
+            plist = os.path.expanduser(f"~/Library/LaunchAgents/{label}.plist")
+            subprocess.run(["launchctl", "bootout", f"gui/{uid}", plist], capture_output=True, text=True, timeout=5)
+            return {"success": True, "method": "launchctl", "message": "Stopped via launchctl"}
+    except Exception:
+        pass
+    
+    # Fallback: stop.sh
+    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    stop_sh = os.path.join(project_dir, "stop.sh")
+    if os.path.exists(stop_sh):
+        try:
+            r = subprocess.run(["bash", stop_sh], cwd=project_dir, capture_output=True, text=True, timeout=10)
+            return {"success": True, "method": "stop.sh", "message": "Stopped via stop.sh"}
+        except Exception as e:
+            return {"success": False, "method": "stop.sh", "message": str(e)}
+    
+    # Last resort: self-terminate
+    import signal
+    os.kill(os.getpid(), signal.SIGTERM)
+    return {"success": True, "method": "sigterm", "message": "Self-terminating..."}
+
+
+@app.post("/api/backend/start")
+async def backend_start(user=Depends(check_session)):
+    """Start the backend (useful after a stop — this can only be called if already running, so it's effectively a no-op or re-bootstrap)."""
+    uid = os.getuid()
+    label = "ai.openclaw.clawscope"
+    plist = os.path.expanduser(f"~/Library/LaunchAgents/{label}.plist")
+    
+    # Try to bootstrap/load the LaunchAgent
+    if os.path.exists(plist):
+        try:
+            r = subprocess.run(["launchctl", "bootstrap", f"gui/{uid}", plist], capture_output=True, text=True, timeout=5)
+            if r.returncode == 0:
+                return {"success": True, "method": "launchctl", "message": "LaunchAgent loaded"}
+            # Already loaded? Try kickstart
+            r = subprocess.run(["launchctl", "kickstart", f"gui/{uid}/{label}"], capture_output=True, text=True, timeout=5)
+            if r.returncode == 0:
+                return {"success": True, "method": "launchctl", "message": "LaunchAgent started"}
+        except Exception:
+            pass
+    
+    return {"success": True, "method": "already_running", "message": "Backend is already running"}
 
 
 # Catch-all for frontend routing
