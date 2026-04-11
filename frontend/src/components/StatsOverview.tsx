@@ -26,8 +26,6 @@ import {
   IconDownload,
   IconCheck,
   IconRefresh,
-  IconPlayerPlay,
-  IconPlayerStop,
   IconRotateClockwise,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
@@ -318,38 +316,17 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ refreshTrigger }) 
                 </>
               )}
             </Group>
-            <Group gap="xs" ml="auto">
-              <Button
+            <Button
                 size="xs"
                 variant="light"
                 color="blue"
                 leftSection={<IconRotateClockwise size={14} />}
                 loading={backendAction === 'restart'}
                 onClick={() => backendControl('restart')}
+                ml="auto"
               >
                 Restart
               </Button>
-              <Button
-                size="xs"
-                variant="light"
-                color="red"
-                leftSection={<IconPlayerStop size={14} />}
-                loading={backendAction === 'stop'}
-                onClick={() => backendControl('stop')}
-              >
-                Stop
-              </Button>
-              <Button
-                size="xs"
-                variant="light"
-                color="green"
-                leftSection={<IconPlayerPlay size={14} />}
-                loading={backendAction === 'start'}
-                onClick={() => backendControl('start')}
-              >
-                Start
-              </Button>
-            </Group>
           </Group>
           {backendResult && (
             <Group gap="xs" mt="xs">
