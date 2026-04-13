@@ -6,9 +6,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 import time
+
+def _utc_iso(dt):
+    """Convert naive datetime (assumed UTC) to ISO string with 'Z' suffix."""
+    if dt is None:
+        return None
+    return dt.isoformat() + 'Z'
 import json
 import psutil
 import shutil
@@ -1800,7 +1806,7 @@ async def get_real_prompts(
         runs.append({
             'session_id': turn.session_id,
             'turn_index': turn.turn_index,
-            'timestamp': turn.started_at.isoformat() if turn.started_at else None,
+            'timestamp': _utc_iso(turn.started_at),
             'model': turn.model or session.primary_model or 'unknown',
             'user_message': turn.user_message or '',
             'api_calls': turn.api_calls or turn_summary.get('call_count', 0),
@@ -1899,7 +1905,7 @@ async def search_real_prompts(
         results.append({
             'session_id': turn.session_id,
             'turn_index': turn.turn_index,
-            'timestamp': turn.started_at.isoformat() if turn.started_at else None,
+            'timestamp': _utc_iso(turn.started_at),
             'model': turn.model or session.primary_model or 'unknown',
             'user_message': turn.user_message or '',
             'assistant_response': turn.assistant_response or '',
@@ -2027,8 +2033,8 @@ async def get_prompt_sessions(
             {
                 "session_id": s.session_id,
                 "user_category": s.user_category,
-                "started_at": s.started_at.isoformat() if s.started_at else None,
-                "last_message_at": s.last_message_at.isoformat() if s.last_message_at else None,
+                "started_at": _utc_iso(s.started_at),
+                "last_message_at": _utc_iso(s.last_message_at),
                 "total_turns": s.total_turns,
                 "total_api_calls": s.total_api_calls,
                 "total_tokens": s.total_tokens,
@@ -2086,8 +2092,8 @@ async def get_prompt_history(
                 "turn_index": t.turn_index,
                 "user_message": t.user_message,
                 "assistant_response": t.assistant_response,
-                "started_at": t.started_at.isoformat() if t.started_at else None,
-                "ended_at": t.ended_at.isoformat() if t.ended_at else None,
+                "started_at": _utc_iso(t.started_at),
+                "ended_at": _utc_iso(t.ended_at),
                 "duration_ms": t.duration_ms,
                 "api_calls": t.api_calls,
                 "tool_calls": t.tool_calls,
@@ -2129,8 +2135,8 @@ async def get_turn_detail(
             "turn_index": turn.turn_index,
             "user_message": turn.user_message_full or turn.user_message,
             "assistant_response": turn.assistant_response,
-            "started_at": turn.started_at.isoformat() if turn.started_at else None,
-            "ended_at": turn.ended_at.isoformat() if turn.ended_at else None,
+            "started_at": _utc_iso(turn.started_at),
+            "ended_at": _utc_iso(turn.ended_at),
             "duration_ms": turn.duration_ms,
             "api_calls": turn.api_calls,
             "tool_calls": turn.tool_calls,
@@ -2142,7 +2148,7 @@ async def get_turn_detail(
             {
                 "call_index": c.call_index,
                 "message_id": c.message_id,
-                "timestamp": c.timestamp.isoformat() if c.timestamp else None,
+                "timestamp": _utc_iso(c.timestamp),
                 "model": c.model,
                 "provider": c.provider,
                 "stop_reason": c.stop_reason,
