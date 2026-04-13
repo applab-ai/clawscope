@@ -1,4 +1,10 @@
 # Changelog
+## [1.4.1] — 2026-04-13
+
+### Fixed
+
+- **Search results expand/collapse broken** — runKey used hyphen separator in search results but colon elsewhere; `expandedRuns` and `realRunDetails` never matched, so API-call details wouldn't load for search results.
+
 ## [1.4.0] — 2026-04-13
 
 ### Fixed
