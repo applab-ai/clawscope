@@ -51,14 +51,20 @@ def _channel_map():
 
 
 def build_session_id_map() -> dict:
-    """Map session UUIDs to user category using known IDs + transcript heuristics."""
+    """Map session UUIDs to user category using known IDs + transcript heuristics.
+    
+    Priority: known user (bernd/frank) > cron > subagent.
+    User sender_ids win over cron markers — a session with both cron injections
+    AND user messages is a user session, not a cron session.
+    Scans up to 200 lines to catch sender_id even when cron output comes first.
+    """
     sid_map = {}
     
     # 1. Known session IDs (from config)
     for sid, user in _known_sessions().items():
         sid_map[sid] = user.lower()
     
-    # 2. Scan transcripts for cron markers in files not yet mapped
+    # 2. Scan transcripts for sender IDs and cron markers
     sender_ids = _sender_id_map()
     all_jsonl = []
     for sdir in _all_sessions_dirs():
@@ -68,44 +74,41 @@ def build_session_id_map() -> dict:
         if sid in sid_map:
             continue
         
+        # Count sender occurrences across the ENTIRE raw file.
+        # Raw JSONL has JSON-escaped quotes inside text blocks:
+        #   \"sender_id\": \"8383779749\"  (raw bytes)
+        # We search for both escaped and unescaped patterns.
+        user_counts = {}  # name -> count
+        found_cron = False
         try:
-            with open(fpath) as f:
-                for i, line in enumerate(f):
-                    if i > 30:  # Only check first 30 lines for performance
-                        break
-                    entry = json.loads(line)
-                    if entry.get('type') != 'message':
-                        continue
-                    msg = entry.get('message', {})
-                    if not isinstance(msg, dict):
-                        continue
-                    
-                    # Check content for [cron: marker
-                    content = msg.get('content', '')
-                    txt = ''
-                    if isinstance(content, list):
-                        for c in content:
-                            if isinstance(c, dict):
-                                txt += c.get('text', '')
-                    elif isinstance(content, str):
-                        txt = content
-                    
-                    if '[cron:' in txt:
-                        sid_map[sid] = 'cron'
-                        break
-                    
-                    # Check for Telegram sender IDs in inbound metadata
-                    for sid_id, sid_name in sender_ids.items():
-                        if f'"sender_id": "{sid_id}"' in txt or f'"sender_id":"{sid_id}"' in txt:
-                            sid_map[sid] = sid_name
-                            break
-                    if sid in sid_map:
-                        break
+            with open(fpath, 'r', errors='replace') as f:
+                raw = f.read()
+            
+            # Check for cron markers
+            if '[cron:' in raw:
+                found_cron = True
+            
+            # Count sender_id occurrences (escaped + unescaped)
+            for sid_id, sid_name in sender_ids.items():
+                count = 0
+                # Unescaped (inside parsed text): "sender_id": "ID"
+                count += raw.count(f'"sender_id": "{sid_id}"')
+                count += raw.count(f'"sender_id":"{sid_id}"')
+                # JSON-escaped (raw JSONL): \"sender_id\": \"ID\"
+                count += raw.count(f'\\"sender_id\\": \\"{sid_id}\\"')
+                count += raw.count(f'\\"sender_id\\":\\"{sid_id}\\"')
+                if count > 0:
+                    user_counts[sid_name] = count
         except:
             continue
         
-        if sid not in sid_map:
-            sid_map[sid] = 'subagent'  # Remaining are subagents spawned by users
+        # Priority: user with most messages > cron > subagent
+        if user_counts:
+            sid_map[sid] = max(user_counts, key=user_counts.get)
+        elif found_cron:
+            sid_map[sid] = 'cron'
+        else:
+            sid_map[sid] = 'subagent'
     
     return sid_map
 
