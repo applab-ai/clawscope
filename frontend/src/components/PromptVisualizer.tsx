@@ -997,7 +997,7 @@ export const PromptVisualizer: React.FC = () => {
             )}
             <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
             {searchResults.map((run) => {
-              const runKey = `${run.session_id}-${run.turn_index}`;
+              const runKey = getRunKey(run);
               const expanded = expandedRuns.has(runKey);
               const detail = realRunDetails[runKey];
               const toggleExpand = () => {
