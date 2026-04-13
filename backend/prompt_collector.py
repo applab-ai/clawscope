@@ -11,6 +11,7 @@ import sys
 from datetime import datetime
 from collections import defaultdict
 from sqlalchemy.orm import Session as DBSession
+from sqlalchemy import func
 
 sys.path.insert(0, os.path.dirname(__file__))
 from db import get_db, create_tables, PromptSession, PromptTurn, PromptApiCall
@@ -115,6 +116,14 @@ def process_session_file(file_path, session_id, agent_id, user_category, db):
     turn_index = 0
     session_started_at = None
     last_message_at = None
+    
+    # For incremental parsing: continue turn_index from where we left off
+    if existing_session and existing_session.last_parsed_bytes > 0 and not session_was_reset:
+        max_existing = db.query(func.max(PromptTurn.turn_index)).filter(
+            PromptTurn.session_id == session_id
+        ).scalar()
+        if max_existing is not None:
+            turn_index = max_existing + 1
     
     try:
         with open(file_path, 'r') as f:
