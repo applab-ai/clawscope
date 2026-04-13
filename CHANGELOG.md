@@ -1,4 +1,17 @@
 # Changelog
+## [1.4.0] — 2026-04-13
+
+### Fixed
+
+- **Timestamps now UTC-aware** — Backend appends `Z` suffix, browser displays local timezone correctly
+- **API-Call records no longer missing** — Incremental parsing continues `turn_index` from last known DB value instead of restarting at 0
+- **Session categorization** — Collector searches both JSON-escaped and unescaped `sender_id` patterns across entire file; assigns category by most frequent sender
+
+### Added
+
+- **Backend control panel** — Restart button in Overview with live PID + uptime display
+- `/api/backend/status` and `/api/backend/restart` endpoints (LaunchAgent-aware with start.sh fallback)
+
 
 All notable changes to Clawscope are documented in this file.
 

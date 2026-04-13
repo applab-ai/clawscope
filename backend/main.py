@@ -26,7 +26,7 @@ from auth import verify_password, create_access_token, check_session
 import config
 
 # Initialize FastAPI
-CLAWSCOPE_VERSION = "1.3.0"
+CLAWSCOPE_VERSION = "1.4.0"
 VERSION_CHECK_CACHE_TTL = timedelta(minutes=5)
 _version_check_cache = {"expires_at": None, "data": None}
 app = FastAPI(title="Clawscope", version=CLAWSCOPE_VERSION)
