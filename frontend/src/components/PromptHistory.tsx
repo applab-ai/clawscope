@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card, Title, SimpleGrid, Table, ScrollArea, Text, Group, Center, Loader,
-  Alert, Stack, Select, Badge, Collapse, ActionIcon, Tooltip,
+  Alert, Stack, Select, Badge, Collapse, ActionIcon,
   SegmentedControl, Paper, Code, Pagination,
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
@@ -30,12 +30,6 @@ const USER_COLORS: Record<string, string> = {
 const formatCost = (c: number) => `$${c.toFixed(4)}`;
 const formatTokens = (t: number) =>
   t >= 1e6 ? `${(t / 1e6).toFixed(1)}M` : t >= 1e3 ? `${(t / 1e3).toFixed(1)}K` : `${t}`;
-const formatDuration = (ms: number) => {
-  if (!ms) return '—';
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}s`;
-};
 const formatTime = (iso: string) => {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -108,32 +102,29 @@ const TurnCard: React.FC<{ turn: PromptTurnInfo }> = ({ turn }) => {
 
   return (
     <Paper withBorder p="sm" mb="xs">
-      <Group justify="space-between" wrap="nowrap" onClick={() => setExpanded(!expanded)} style={{ cursor: 'pointer' }}>
-        <Group gap="sm" wrap="nowrap" style={{ flex: 1, overflow: 'hidden' }}>
+      <Group justify="space-between" wrap="wrap" onClick={() => setExpanded(!expanded)} style={{ cursor: 'pointer' }} gap="xs">
+        {/* Row 1: Expand + Badge + Message */}
+        <Group gap="sm" wrap="nowrap" style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
           <ActionIcon variant="subtle" size="sm">
             {expanded ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
           </ActionIcon>
           <Badge color={USER_COLORS[turn.user_category] || 'gray'} size="sm" variant="light">
             {turn.user_category || '?'}
           </Badge>
-          <Text size="sm" truncate style={{ flex: 1 }}>
+          <Text size="sm" truncate style={{ flex: 1, minWidth: 0 }}>
             {turn.user_message || t('promptHistory.noText')}
           </Text>
         </Group>
-        <Group gap="xs" wrap="nowrap">
-          <Tooltip label={`${turn.api_calls} API Calls`}>
-            <Badge leftSection={<IconApi size={10} />} size="xs" variant="light" color="blue">
-              {turn.api_calls}
-            </Badge>
-          </Tooltip>
+        {/* Row 2: Stats - wraps on mobile */}
+        <Group gap="xs" wrap="wrap">
+          <Badge leftSection={<IconApi size={10} />} size="xs" variant="light" color="blue">
+            {turn.api_calls}
+          </Badge>
           {turn.tool_calls > 0 && (
-            <Tooltip label={`${turn.tool_calls} Tool Calls: ${turn.tool_names}`}>
-              <Badge leftSection={<IconTool size={10} />} size="xs" variant="light" color="grape">
-                {turn.tool_calls}
-              </Badge>
-            </Tooltip>
+            <Badge leftSection={<IconTool size={10} />} size="xs" variant="light" color="grape">
+              {turn.tool_calls}
+            </Badge>
           )}
-          <Text size="xs" c="dimmed" ff="monospace">{formatDuration(turn.duration_ms)}</Text>
           <Text size="xs" fw={600} ff="monospace" c="blue">{formatCost(turn.total_cost)}</Text>
           <Text size="xs" c="dimmed">{formatTime(turn.started_at)}</Text>
         </Group>
@@ -181,21 +172,17 @@ const TurnCard: React.FC<{ turn: PromptTurnInfo }> = ({ turn }) => {
 const SessionCard: React.FC<{ session: PromptSessionInfo; onSelect: (id: string) => void }> = ({ session, onSelect }) => {
   return (
     <Paper withBorder p="sm" mb="xs" onClick={() => onSelect(session.session_id)} style={{ cursor: 'pointer' }}>
-      <Group justify="space-between">
-        <Group gap="sm">
+      <Group justify="space-between" wrap="wrap" gap="xs">
+        <Group gap="sm" wrap="wrap">
           <Badge color={USER_COLORS[session.user_category] || 'gray'} size="sm" variant="light">
             {session.user_category || '?'}
           </Badge>
           <Code fz="xs">{session.session_id.slice(0, 8)}...</Code>
           <Badge size="xs" variant="outline">{session.primary_model || '?'}</Badge>
         </Group>
-        <Group gap="xs">
-          <Tooltip label="Turns">
-            <Badge leftSection={<IconMessage size={10} />} size="xs" variant="light">{session.total_turns}</Badge>
-          </Tooltip>
-          <Tooltip label="API Calls">
-            <Badge leftSection={<IconApi size={10} />} size="xs" variant="light" color="blue">{session.total_api_calls}</Badge>
-          </Tooltip>
+        <Group gap="xs" wrap="wrap">
+          <Badge leftSection={<IconMessage size={10} />} size="xs" variant="light">{session.total_turns}</Badge>
+          <Badge leftSection={<IconApi size={10} />} size="xs" variant="light" color="blue">{session.total_api_calls}</Badge>
           <Text size="xs" fw={600} ff="monospace" c="blue">{formatCost(session.total_cost)}</Text>
           <Text size="xs" c="dimmed">{formatTime(session.started_at)}</Text>
         </Group>
@@ -304,16 +291,18 @@ export const PromptHistory: React.FC<Props> = ({ refreshTrigger }) => {
     <Stack gap="lg">
       {/* Header + Filters */}
       <Card withBorder>
-        <Group justify="space-between" mb="md" wrap="wrap">
-          <Title order={3}><IconHistory size={24} style={{ verticalAlign: 'middle', marginRight: 8 }} />{t('promptHistory.title')}</Title>
-          <Text size="sm" c="dimmed" mt={4}>{t('promptHistory.description')}</Text>
-          <Group gap="sm" align="flex-end">
+        <Stack gap="md">
+          <Group justify="space-between" wrap="wrap">
+            <Title order={3}><IconHistory size={24} style={{ verticalAlign: 'middle', marginRight: 8 }} />{t('promptHistory.title')}</Title>
+          </Group>
+          <Text size="sm" c="dimmed">{t('promptHistory.description')}</Text>
+          <Group gap="xs" wrap="wrap">
             <SegmentedControl size="xs" value={view} onChange={(v) => { setView(v as 'turns' | 'sessions'); setSelectedSession(null); }}
               data={[
                 { value: 'turns', label: t('promptHistory.views.timeline') },
                 { value: 'sessions', label: t('promptHistory.views.sessions') },
               ]} />
-            <Select value={timeMode} size="xs" w={120}
+            <Select value={timeMode} size="xs" w={100}
               onChange={(v) => setTimeMode(v || '7')}
               data={[
                 { value: '0', label: t('promptHistory.filters.today') },
@@ -325,24 +314,24 @@ export const PromptHistory: React.FC<Props> = ({ refreshTrigger }) => {
             {timeMode === 'custom' && (
               <>
                 <DatePickerInput
-                  size="xs" w={130} locale="de" valueFormat="DD.MM.YYYY"
+                  size="xs" w={120} locale="de" valueFormat="DD.MM.YYYY"
                   placeholder={t('promptHistory.filters.from')} value={dateFrom}
                   onChange={(v: any) => setDateFrom(v)} maxDate={dateTo || new Date()}
                   clearable
                 />
                 <DatePickerInput
-                  size="xs" w={130} locale="de" valueFormat="DD.MM.YYYY"
+                  size="xs" w={120} locale="de" valueFormat="DD.MM.YYYY"
                   placeholder={t('promptHistory.filters.to')} value={dateTo}
                   onChange={(v: any) => setDateTo(v)} minDate={dateFrom || undefined} maxDate={new Date()}
                   clearable
                 />
               </>
             )}
-            <Select value={userFilter} size="xs" w={120} clearable placeholder={t('promptHistory.filters.allUsers')}
+            <Select value={userFilter} size="xs" w={100} clearable placeholder={t('promptHistory.filters.allUsers')}
               onChange={(v) => setUserFilter(v)}
               data={userOptions} />
           </Group>
-        </Group>
+        </Stack>
 
         {/* Stats */}
         {stats && (
